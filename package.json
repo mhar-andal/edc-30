@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:vercel": "node scripts/vercel-build.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "convex:dev": "convex dev",
