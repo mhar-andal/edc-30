@@ -34,7 +34,10 @@ if (!process.env.CONVEX_DEPLOY_KEY) {
 }
 
 execSync(
-  "npx convex deploy --cmd 'npm run build' --cmd-url-env-var-name VITE_CONVEX_URL -y",
+  // --check-build-environment disable lets us point a "prod" Convex deploy
+  // key at the staging Vercel environment (which Vercel reports as "preview"),
+  // since our staging Convex project is intentionally a separate prod deployment.
+  "npx convex deploy --cmd 'npm run build' --cmd-url-env-var-name VITE_CONVEX_URL --check-build-environment disable",
   { stdio: "inherit" },
 );
 
