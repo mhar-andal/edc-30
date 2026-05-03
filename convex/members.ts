@@ -1,0 +1,124 @@
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    const members = await ctx.db.query("members").collect();
+    return members.sort((a, b) => a.createdAt - b.createdAt);
+  },
+});
+
+export const get = query({
+  args: { memberId: v.id("members") },
+  handler: async (ctx, { memberId }) => {
+    return await ctx.db.get(memberId);
+  },
+});
+
+export const create = mutation({
+  args: {
+    name: v.string(),
+    color: v.string(),
+  },
+  handler: async (ctx, { name, color }) => {
+    const trimmed = name.trim();
+    if (trimmed.length === 0) throw new Error("Name cannot be empty.");
+    if (trimmed.length > 32) throw new Error("Name is too long (max 32).");
+    const nameLower = trimmed.toLowerCase();
+    const existingByName = await ctx.db
+      .query("members")
+      .withIndex("by_nameLower", (q) => q.eq("nameLower", nameLower))
+      .first();
+    if (existingByName) {
+      throw new Error("NAME_TAKEN");
+    }
+    const colorLower = color.toLowerCase();
+    const existingByColor = await ctx.db
+      .query("members")
+      .filter((q) => q.eq(q.field("color"), colorLower))
+      .first();
+    if (existingByColor) {
+      throw new Error("COLOR_TAKEN");
+    }
+    const id: Id<"members"> = await ctx.db.insert("members", {
+      name: trimmed,
+      nameLower,
+      color: colorLower,
+      createdAt: Date.now(),
+    });
+    return id;
+  },
+});
+
+export const rename = mutation({
+  args: {
+    memberId: v.id("members"),
+    name: v.string(),
+  },
+  handler: async (ctx, { memberId, name }) => {
+    const trimmed = name.trim();
+    if (trimmed.length === 0) throw new Error("Name cannot be empty.");
+    if (trimmed.length > 32) throw new Error("Name is too long (max 32).");
+    const nameLower = trimmed.toLowerCase();
+    const conflict = await ctx.db
+      .query("members")
+      .withIndex("by_nameLower", (q) => q.eq("nameLower", nameLower))
+      .first();
+    if (conflict && conflict._id !== memberId) {
+      throw new Error("NAME_TAKEN");
+    }
+    await ctx.db.patch(memberId, { name: trimmed, nameLower });
+  },
+});
+
+export const setColor = mutation({
+  args: {
+    memberId: v.id("members"),
+    color: v.string(),
+  },
+  handler: async (ctx, { memberId, color }) => {
+    const colorLower = color.toLowerCase();
+    const conflict = await ctx.db
+      .query("members")
+      .filter((q) => q.eq(q.field("color"), colorLower))
+      .first();
+    if (conflict && conflict._id !== memberId) {
+      throw new Error("COLOR_TAKEN");
+    }
+    await ctx.db.patch(memberId, { color: colorLower });
+  },
+});
+
+export const remove = mutation({
+  args: { memberId: v.id("members") },
+  handler: async (ctx, { memberId }) => {
+    const selections = await ctx.db
+      .query("memberSelections")
+      .withIndex("by_member", (q) => q.eq("memberId", memberId))
+      .collect();
+    for (const s of selections) await ctx.db.delete(s._id);
+
+    const meetupsAsA = await ctx.db
+      .query("meetups")
+      .filter((q) => q.eq(q.field("memberAId"), memberId))
+      .collect();
+    const meetupsAsB = await ctx.db
+      .query("meetups")
+      .filter((q) => q.eq(q.field("memberBId"), memberId))
+      .collect();
+    const meetupsAuthored = await ctx.db
+      .query("meetups")
+      .filter((q) => q.eq(q.field("editedByMemberId"), memberId))
+      .collect();
+    const seen = new Set<string>();
+    for (const m of [...meetupsAsA, ...meetupsAsB, ...meetupsAuthored]) {
+      if (seen.has(m._id)) continue;
+      seen.add(m._id);
+      await ctx.db.delete(m._id);
+    }
+
+    await ctx.db.delete(memberId);
+  },
+});
