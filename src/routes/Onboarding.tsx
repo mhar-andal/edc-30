@@ -231,7 +231,7 @@ export default function Onboarding() {
                 <Loader2 className="size-4 animate-spin" /> Setting up…
               </>
             ) : (
-              "Join the workspace"
+              "Join"
             )}
           </Button>
         </form>
