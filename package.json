@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "convex:dev": "convex dev",
-    "convex:deploy": "convex deploy"
+    "convex:deploy": "convex deploy",
+    "snapshot:dev": "convex export --path seeds/dev-snapshot.zip --deployment dev"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.1.4",
