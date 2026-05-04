@@ -48,8 +48,17 @@ export const copyFromMember = mutation({
     sourceMemberId: v.id("members"),
     targetMemberId: v.id("members"),
     mode: v.union(v.literal("replace"), v.literal("add")),
+    /**
+     * Optional day filter. When supplied, only picks for that day are
+     * considered on both sides — source picks for other days are
+     * ignored, and a "replace" only clears the target's picks for the
+     * specified day.
+     */
+    day: v.optional(
+      v.union(v.literal("day_1"), v.literal("day_2"), v.literal("day_3")),
+    ),
   },
-  handler: async (ctx, { sourceMemberId, targetMemberId, mode }) => {
+  handler: async (ctx, { sourceMemberId, targetMemberId, mode, day }) => {
     if (sourceMemberId === targetMemberId) {
       throw new Error("Cannot copy from yourself.");
     }
@@ -65,16 +74,34 @@ export const copyFromMember = mutation({
       .query("memberSelections")
       .withIndex("by_member", (q) => q.eq("memberId", targetMemberId))
       .collect();
+
+    let dayArtistIds: Set<string> | null = null;
+    if (day) {
+      const dayArtists = await ctx.db
+        .query("artists")
+        .withIndex("by_day_start", (q) => q.eq("day", day))
+        .collect();
+      dayArtistIds = new Set(dayArtists.map((a) => a._id));
+    }
+
+    const filteredSourceSels = dayArtistIds
+      ? sourceSels.filter((s) => dayArtistIds!.has(s.artistId))
+      : sourceSels;
+    const targetSelsToDelete = dayArtistIds
+      ? targetSels.filter((s) => dayArtistIds!.has(s.artistId))
+      : targetSels;
     const targetArtistIds = new Set(targetSels.map((s) => s.artistId));
 
     if (mode === "replace") {
-      for (const s of targetSels) await ctx.db.delete(s._id);
-      targetArtistIds.clear();
+      for (const s of targetSelsToDelete) {
+        await ctx.db.delete(s._id);
+        targetArtistIds.delete(s.artistId);
+      }
     }
 
     let added = 0;
     let skipped = 0;
-    for (const s of sourceSels) {
+    for (const s of filteredSourceSels) {
       if (targetArtistIds.has(s.artistId)) {
         skipped += 1;
         continue;
@@ -86,6 +113,10 @@ export const copyFromMember = mutation({
       });
       added += 1;
     }
-    return { added, skipped, removed: mode === "replace" ? targetSels.length : 0 };
+    return {
+      added,
+      skipped,
+      removed: mode === "replace" ? targetSelsToDelete.length : 0,
+    };
   },
 });

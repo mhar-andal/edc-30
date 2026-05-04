@@ -471,72 +471,57 @@ export const demo = mutation({
     for (const a of allArtists) artistByDayName.set(`${a.day}::${a.name}`, a);
 
     const BUFFER_MS = 15 * 60 * 1000;
+    /**
+     * Scripted meetups, now keyed by (day, window, destinationStage)
+     * to match the convergence-pinned model. The from-artists are only
+     * used to compute the convergence window — the meetup itself isn't
+     * tied to any specific members.
+     */
     const SCRIPTED_MEETUPS: Array<{
       day: "day_1" | "day_2" | "day_3";
-      leftMember: string;
-      rightMember: string;
-      leftFromArtist: string;
-      rightFromArtist: string;
+      fromArtists: string[];
       sharedToArtist: string;
       label: string;
-      authorMember: string;
     }> = [
       {
         day: "day_1",
-        leftMember: "Nick",
-        rightMember: "Lillian",
-        leftFromArtist: "Sofi Tukker",
-        rightFromArtist: "Levity",
+        fromArtists: ["Sofi Tukker", "Levity"],
         sharedToArtist: "Wooli",
         label: "Electric Avenue Sign",
-        authorMember: "Nick",
       },
       {
         day: "day_2",
-        leftMember: "Katrina",
-        rightMember: "Brandon",
-        leftFromArtist: "Hardwell",
-        rightFromArtist: "Sammy Virji",
+        fromArtists: ["Hardwell", "Sammy Virji"],
         sharedToArtist: "Tiësto",
         label: "Electric Avenue Sign",
-        authorMember: "Katrina",
       },
       {
         day: "day_3",
-        leftMember: "Lillian",
-        rightMember: "Lycka",
-        leftFromArtist: "Dabin",
-        rightFromArtist: "DJ Gigola",
+        fromArtists: ["Dabin", "DJ Gigola"],
         sharedToArtist: "Solomun",
         label: "Electric Avenue Sign",
-        authorMember: "Lillian",
       },
     ];
 
     let meetupsAdded = 0;
     for (const m of SCRIPTED_MEETUPS) {
-      const left = artistByDayName.get(`${m.day}::${m.leftFromArtist}`);
-      const right = artistByDayName.get(`${m.day}::${m.rightFromArtist}`);
+      const froms = m.fromArtists
+        .map((name) => artistByDayName.get(`${m.day}::${name}`))
+        .filter((a): a is NonNullable<typeof a> => Boolean(a));
       const shared = artistByDayName.get(`${m.day}::${m.sharedToArtist}`);
-      const memberA = memberByName.get(m.leftMember);
-      const memberB = memberByName.get(m.rightMember);
-      const author = memberByName.get(m.authorMember);
-      if (!left || !right || !shared || !memberA || !memberB || !author) {
-        continue;
-      }
-      const windowStartMs = Math.max(left.endMs, right.endMs) - BUFFER_MS;
+      if (froms.length < 2 || !shared) continue;
+
+      const windowStartMs =
+        Math.max(...froms.map((a) => a.endMs)) - BUFFER_MS;
       const windowEndMs = shared.startMs + BUFFER_MS;
       if (windowEndMs <= windowStartMs) continue;
-      const [pairA, pairB] =
-        memberA < memberB ? [memberA, memberB] : [memberB, memberA];
+
       await ctx.db.insert("meetups", {
         day: m.day,
         windowStartMs,
         windowEndMs,
-        memberAId: pairA,
-        memberBId: pairB,
+        destinationStage: shared.stage,
         label: m.label,
-        editedByMemberId: author,
         editedAt: now + selectionsAdded + meetupsAdded,
       });
       meetupsAdded += 1;

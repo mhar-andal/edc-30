@@ -126,7 +126,7 @@ export default function Onboarding() {
             Coordinate your festival
           </h1>
           <p className="text-sm text-muted-foreground sm:text-base">
-            Pick your name to join. You'll be able to copy another member's
+            Pick your name to join. You'll be able to copy another person's
             picks once you're in.
           </p>
           <Button
