@@ -3,7 +3,6 @@ import { Compass, Loader2, MapPin, Sparkles } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ConvergenceCard } from "@/components/coordinate/ConvergenceCard";
-import { SavedMeetups } from "@/components/coordinate/SavedMeetups";
 import { useScheduleData } from "@/lib/useScheduleData";
 import { useCachedQuery } from "@/lib/useCachedQuery";
 import { useMemberSession } from "@/lib/useMemberSession";
@@ -14,7 +13,6 @@ import {
   buildJourney,
   findConvergences,
   meetupKey,
-  findOrphanedMeetups,
   type Convergence,
 } from "@/lib/coordinate";
 
@@ -39,15 +37,13 @@ export default function Coordinate() {
   }, [data.members, data.selectionsByMember, data.artistsByDay, day]);
 
   const allConvergences = useMemo(
-    () => findConvergences(journeys),
-    [journeys],
+    () => findConvergences(journeys, day),
+    [journeys, day],
   );
 
   const myConvergences = useMemo(() => {
     if (!myMemberId) return [] as Convergence[];
-    return allConvergences.filter(
-      (c) => c.memberAId === myMemberId || c.memberBId === myMemberId,
-    );
+    return allConvergences.filter((c) => c.memberIds.includes(myMemberId));
   }, [allConvergences, myMemberId]);
 
   const visibleConvergences =
@@ -61,32 +57,12 @@ export default function Coordinate() {
     const m = new Map<string, (typeof meetupsForDay)[number]>();
     for (const r of meetupsForDay) {
       m.set(
-        meetupKey(r.day, r.windowStartMs, r.windowEndMs, r.memberAId, r.memberBId),
+        meetupKey(r.day, r.windowStartMs, r.windowEndMs, r.destinationStage),
         r,
       );
     }
     return m;
   }, [meetupsForDay]);
-
-  const liveKeys = useMemo(() => {
-    const set = new Set<string>();
-    for (const c of allConvergences) {
-      set.add(
-        meetupKey(day, c.windowStart, c.windowEnd, c.memberAId, c.memberBId),
-      );
-    }
-    return set;
-  }, [allConvergences, day]);
-
-  const orphaned = useMemo(() => {
-    const all = findOrphanedMeetups(meetupsForDay, liveKeys);
-    if (mode === "mine" && myMemberId) {
-      return all.filter(
-        (m) => m.memberAId === myMemberId || m.memberBId === myMemberId,
-      );
-    }
-    return all;
-  }, [meetupsForDay, liveKeys, mode, myMemberId]);
 
   const myHasPicksToday = useMemo(() => {
     if (!myMemberId) return false;
@@ -137,12 +113,6 @@ export default function Coordinate() {
         day={day}
         onSwitchToEveryone={() => setMode("everyone")}
         onSwitchToMine={() => setMode("mine")}
-      />
-
-      <SavedMeetups
-        day={day}
-        meetups={orphaned}
-        membersById={data.membersById}
       />
     </div>
   );
@@ -208,7 +178,7 @@ function Body({
       <EmptyState
         icon={<Compass className="size-5" />}
         title={`No convergences anywhere on ${dayLabel} yet.`}
-        body="Once members' selections start overlapping in time across different stages, opportunities will show up here."
+        body="Once people's selections start overlapping in time across different stages, opportunities will show up here."
       />
     );
   }
@@ -233,23 +203,25 @@ function Body({
         ) : null}
       </div>
       <div className="grid gap-3">
-        {visibleConvergences.map((c, i) => (
-          <ConvergenceCard
-            key={`${c.windowStart}-${c.windowEnd}-${c.memberAId}-${c.memberBId}-${i}`}
-            day={day}
-            conv={c}
-            membersById={membersById}
-            meetupsByKey={meetupsByKey}
-            myMemberId={myMemberId}
-            meetupKey={meetupKey(
-              day,
-              c.windowStart,
-              c.windowEnd,
-              c.memberAId,
-              c.memberBId,
-            )}
-          />
-        ))}
+        {visibleConvergences.map((c, i) => {
+          const key = meetupKey(
+            day,
+            c.windowStart,
+            c.windowEnd,
+            c.destinationStage,
+          );
+          return (
+            <ConvergenceCard
+              key={`${key}-${i}`}
+              day={day}
+              conv={c}
+              membersById={membersById}
+              meetupsByKey={meetupsByKey}
+              myMemberId={myMemberId}
+              meetupKey={key}
+            />
+          );
+        })}
       </div>
     </section>
   );

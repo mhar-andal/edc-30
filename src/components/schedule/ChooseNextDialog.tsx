@@ -157,8 +157,8 @@ function NextRow({
 }) {
   const youPicked = pickedByMemberIds.includes(myMemberId);
   const isOverlapping = artist.startMs < fromArtistEndMs;
-  const remainingAfterMs = artist.endMs - fromArtistEndMs;
-  const remainingMinutes = Math.max(0, Math.round(remainingAfterMs / 60000));
+  const overlapMs = Math.max(0, fromArtistEndMs - artist.startMs);
+  const overlapMinutes = Math.round(overlapMs / 60000);
   return (
     <div className="px-2.5 pb-2">
       <div className="flex items-start justify-between gap-2">
@@ -167,13 +167,13 @@ function NextRow({
           <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] tabular-nums text-muted-foreground">
             <ArrowRight className="size-3 text-muted-foreground" />
             {formatTime(artist.startMs)} – {formatTime(artist.endMs)}
-            {isOverlapping && (
+            {isOverlapping && overlapMinutes > 0 && (
               <span
                 className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-200 ring-1 ring-amber-500/40"
-                title="Started before your current set ends"
+                title="Overlap with your current set"
               >
                 <Play className="size-2 fill-current" />
-                Already started · {remainingMinutes} min left
+                {overlapMinutes} min overlap
               </span>
             )}
           </div>

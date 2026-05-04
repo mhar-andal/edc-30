@@ -18,6 +18,7 @@ import {
 import { ChooseNextDialog } from "./ChooseNextDialog";
 import { getStagePalette } from "@/lib/colors";
 import { formatTime } from "@/lib/time";
+import { useAutoScroll } from "@/lib/useAutoScroll";
 import { useIsOffline } from "@/lib/useIsOffline";
 import type { Artist, Member } from "@/lib/useScheduleData";
 import { cn } from "@/lib/utils";
@@ -100,7 +101,7 @@ export function ArtistCard({
         borderColor: `rgb(${stageRgb} / 0.45)`,
       }}
     >
-      <div className="flex flex-wrap items-start justify-between gap-1.5">
+      <div className="flex items-start justify-between gap-1.5">
         <div className="min-w-0 flex-1">
           <div
             className={cn(
@@ -138,31 +139,6 @@ export function ArtistCard({
             </div>
           )}
         </div>
-      </div>
-      {density === "normal" &&
-        myOverlapping &&
-        myOverlapping.length > 0 && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                onClick={(e) => e.stopPropagation()}
-                className="mt-1 inline-flex w-fit items-center gap-1 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-200 ring-1 ring-amber-500/40 transition-colors hover:bg-amber-500/25"
-                title="Conflicts with your picks"
-              >
-                <AlertTriangle className="size-2.5 shrink-0" />
-                <span className="truncate">
-                  Overlaps with {myOverlapping[0].name}
-                  {myOverlapping.length > 1
-                    ? ` +${myOverlapping.length - 1}`
-                    : ""}
-                </span>
-              </button>
-            </PopoverTrigger>
-            <OverlapPopoverContent items={myOverlapping} />
-          </Popover>
-        )}
-      <div className="mt-1 flex items-center gap-1.5">
         {myMemberId && (
           <button
             type="button"
@@ -192,28 +168,41 @@ export function ArtistCard({
             <span>{youPicked ? "Picked" : "Add"}</span>
           </button>
         )}
+      </div>
+      {density === "normal" &&
+        myOverlapping &&
+        myOverlapping.length > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                className="mt-1 inline-flex w-fit items-center gap-1 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-200 ring-1 ring-amber-500/40 transition-colors hover:bg-amber-500/25"
+                title="Conflicts with your picks"
+              >
+                <AlertTriangle className="size-2.5 shrink-0" />
+                <span className="truncate">
+                  Overlaps with {myOverlapping[0].name}
+                  {myOverlapping.length > 1
+                    ? ` +${myOverlapping.length - 1}`
+                    : ""}
+                </span>
+              </button>
+            </PopoverTrigger>
+            <OverlapPopoverContent items={myOverlapping} />
+          </Popover>
+        )}
+      <div className="mt-1 flex min-w-0 items-center">
         {pickedByMemberIds.length === 0 ? (
           <span className="text-[10px] text-muted-foreground/70">
             {myMemberId ? "Be the first" : "No picks yet"}
           </span>
         ) : (
-          <div className="-mx-0.5 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {pickedByMemberIds.map((mid) => {
-              const m = membersById.get(mid);
-              if (!m) return null;
-              const isYou = mid === myMemberId;
-              return (
-                <MemberChip
-                  key={mid}
-                  name={m.name}
-                  color={m.color}
-                  size="xs"
-                  isYou={isYou}
-                  className="shrink-0"
-                />
-              );
-            })}
-          </div>
+          <AttendeesStrip
+            pickedByMemberIds={pickedByMemberIds}
+            membersById={membersById}
+            myMemberId={myMemberId}
+          />
         )}
       </div>
       {canChooseNext && (
@@ -298,5 +287,58 @@ function OverlapPopoverContent({
         You can still pick this — handy if you want to leave one set early.
       </p>
     </PopoverContent>
+  );
+}
+
+function AttendeesStrip({
+  pickedByMemberIds,
+  membersById,
+  myMemberId,
+}: {
+  pickedByMemberIds: ReadonlyArray<Id<"members">>;
+  membersById: Map<string, Member>;
+  myMemberId: Id<"members"> | null;
+}) {
+  const ref = useAutoScroll<HTMLDivElement>({ endBehavior: "loop" });
+  const chips = pickedByMemberIds
+    .map((mid) => {
+      const m = membersById.get(mid);
+      if (!m) return null;
+      return { mid, member: m, isYou: mid === myMemberId };
+    })
+    .filter((x): x is { mid: Id<"members">; member: Member; isYou: boolean } => x !== null);
+
+  return (
+    <div
+      ref={ref}
+      onClick={(e) => e.stopPropagation()}
+      className="-mx-0.5 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      {chips.map(({ mid, member, isYou }) => (
+        <MemberChip
+          key={mid}
+          name={member.name}
+          color={member.color}
+          size="xs"
+          isYou={isYou}
+          className="shrink-0"
+        />
+      ))}
+      <div
+        aria-hidden
+        className="contents"
+      >
+        {chips.map(({ mid, member, isYou }) => (
+          <MemberChip
+            key={`dup-${mid}`}
+            name={member.name}
+            color={member.color}
+            size="xs"
+            isYou={isYou}
+            className="shrink-0"
+          />
+        ))}
+      </div>
+    </div>
   );
 }

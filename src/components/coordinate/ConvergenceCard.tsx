@@ -1,7 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { MemberChip } from "@/components/MemberChip";
-import { MeetupEditor } from "./MeetupEditor";
-import { MeetupBadges } from "./MeetupBadges";
+import { MeetupSpotPicker } from "./MeetupSpotPicker";
 import { formatRange, formatTime, type DayKey } from "@/lib/time";
 import { getStagePalette } from "@/lib/colors";
 import type { Id, Doc } from "../../../convex/_generated/dataModel";
@@ -16,6 +15,8 @@ interface Props {
   meetupKey: string;
 }
 
+const OUTSIDE_LABEL = "Start of day";
+
 export function ConvergenceCard({
   day,
   conv,
@@ -24,13 +25,14 @@ export function ConvergenceCard({
   myMemberId,
   meetupKey,
 }: Props) {
-  const memberA = membersById.get(conv.memberAId);
-  const memberB = membersById.get(conv.memberBId);
-  if (!memberA || !memberB) return null;
   const existing = meetupsByKey.get(meetupKey);
-  // Both buffers are guaranteed to share the same toArtist by the convergence rule.
-  const toArtist = conv.bufferA.toArtist ?? conv.bufferB.toArtist;
-  const toPalette = toArtist ? getStagePalette(toArtist.stage) : null;
+  const toArtist = conv.destinationArtist;
+  const toPalette = getStagePalette(toArtist.stage);
+
+  // Group members by their origin stage for the layout the user
+  // requested. Origins are ordered by earliest buffer start so the
+  // visual order has some temporal sense to it.
+  const groups = groupMembersByOrigin(conv, membersById);
 
   return (
     <div className="rounded-xl border border-border/60 bg-card/40 p-4 shadow-sm">
@@ -39,132 +41,144 @@ export function ConvergenceCard({
           {formatRange(conv.windowStart, conv.windowEnd)}
         </div>
       </div>
-      {toArtist && toPalette && (
-        <div
-          className="mt-2 flex flex-wrap items-center gap-2 rounded-md px-3 py-2 text-sm"
-          style={{
-            backgroundColor: `rgb(${toPalette.rgb} / 0.12)`,
-            color: `rgb(${toPalette.rgb})`,
-            boxShadow: `inset 0 0 0 1px rgb(${toPalette.rgb} / 0.4)`,
-          }}
-        >
-          <span className="text-[11px] uppercase tracking-wide opacity-80">
-            Heading to
-          </span>
-          <span className="font-semibold">{toArtist.name}</span>
-          <span className="opacity-80">· {toArtist.stage}</span>
-          <span className="ml-auto text-[11px] font-normal tabular-nums opacity-70">
-            {formatTime(toArtist.startMs)}
-          </span>
-        </div>
-      )}
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <MemberRow
-          member={memberA}
-          buffer={conv.bufferA}
-          myMemberId={myMemberId}
-        />
-        <MemberRow
-          member={memberB}
-          buffer={conv.bufferB}
-          myMemberId={myMemberId}
-        />
+      <div
+        className="mt-2 flex flex-wrap items-center gap-2 rounded-md px-3 py-2 text-sm"
+        style={{
+          backgroundColor: `rgb(${toPalette.rgb} / 0.12)`,
+          color: `rgb(${toPalette.rgb})`,
+          boxShadow: `inset 0 0 0 1px rgb(${toPalette.rgb} / 0.4)`,
+        }}
+      >
+        <span className="text-[11px] uppercase tracking-wide opacity-80">
+          Heading to
+        </span>
+        <span className="font-semibold">{toArtist.name}</span>
+        <span className="opacity-80">· {toArtist.stage}</span>
+        <span className="ml-auto text-[11px] font-normal tabular-nums opacity-70">
+          {formatTime(toArtist.startMs)}
+        </span>
       </div>
-      {existing && existing.label && (
-        <MeetupBadges
-          className="mt-3"
-          label={existing.label}
-          fallbackStartMs={conv.windowStart}
-          fallbackEndMs={conv.windowEnd}
-          meetupStartMs={existing.meetupStartMs}
-          meetupEndMs={existing.meetupEndMs}
-        />
-      )}
-      <div className="mt-3">
-        <MeetupEditor
+
+      <div className="mt-3 space-y-2">
+        {groups.map((g) => (
+          <OriginGroupRow
+            key={g.originKey}
+            group={g}
+            myMemberId={myMemberId}
+          />
+        ))}
+      </div>
+
+      <div className="mt-3 rounded-lg border border-border/60 bg-background/30 p-3">
+        <MeetupSpotPicker
           day={day}
           windowStart={conv.windowStart}
           windowEnd={conv.windowEnd}
-          memberAId={conv.memberAId}
-          memberBId={conv.memberBId}
+          destinationStage={conv.destinationStage}
           existing={existing}
           myMemberId={myMemberId}
-          membersById={membersById}
         />
       </div>
     </div>
   );
 }
 
-function MemberRow({
-  member,
-  buffer,
+interface OriginGroup {
+  originKey: string;
+  originLabel: string;
+  originStage: string | null;
+  earliestStart: number;
+  members: Array<{
+    member: Doc<"members">;
+    bufferStart: number;
+    bufferEnd: number;
+  }>;
+}
+
+function groupMembersByOrigin(
+  conv: Convergence,
+  membersById: Map<string, Doc<"members">>,
+): OriginGroup[] {
+  const map = new Map<string, OriginGroup>();
+  for (const [memberId, buffer] of conv.byMember) {
+    const member = membersById.get(memberId);
+    if (!member) continue;
+    const originStage = buffer.fromArtist?.stage ?? null;
+    const originLabel = buffer.fromArtist?.stage ?? OUTSIDE_LABEL;
+    const originKey = originStage ?? "__outside";
+    const existing = map.get(originKey);
+    const entry = {
+      member,
+      bufferStart: buffer.start,
+      bufferEnd: buffer.end,
+    };
+    if (existing) {
+      existing.members.push(entry);
+      existing.earliestStart = Math.min(
+        existing.earliestStart,
+        buffer.start,
+      );
+    } else {
+      map.set(originKey, {
+        originKey,
+        originLabel,
+        originStage,
+        earliestStart: buffer.start,
+        members: [entry],
+      });
+    }
+  }
+  return Array.from(map.values()).sort(
+    (a, b) => a.earliestStart - b.earliestStart,
+  );
+}
+
+function OriginGroupRow({
+  group,
   myMemberId,
 }: {
-  member: Doc<"members">;
-  buffer: Convergence["bufferA"];
+  group: OriginGroup;
   myMemberId: Id<"members"> | null;
 }) {
-  const fromPalette = buffer.fromArtist
-    ? getStagePalette(buffer.fromArtist.stage)
-    : null;
-  const toPalette = buffer.toArtist
-    ? getStagePalette(buffer.toArtist.stage)
-    : null;
-  const isMine = member._id === myMemberId;
+  const palette = group.originStage ? getStagePalette(group.originStage) : null;
   return (
-    <div className="rounded-md border border-border/60 bg-background/40 p-3">
-      <div className="mb-2">
-        <MemberChip
-          name={member.name}
-          color={member.color}
-          size="sm"
-          isYou={isMine}
-          truncate
-        />
-      </div>
+    <div className="rounded-md border border-border/60 bg-background/40 p-2.5">
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
-        {buffer.fromArtist ? (
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          From
+        </span>
+        {palette ? (
           <span
-            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5"
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium"
             style={{
-              backgroundColor: `rgb(${fromPalette!.rgb} / 0.2)`,
-              color: `rgb(${fromPalette!.rgb})`,
+              backgroundColor: `rgb(${palette.rgb} / 0.2)`,
+              color: `rgb(${palette.rgb})`,
             }}
-            title={buffer.fromArtist.stage}
           >
             <span
               className="size-1.5 rounded-full"
-              style={{ backgroundColor: `rgb(${fromPalette!.rgb})` }}
+              style={{ backgroundColor: `rgb(${palette.rgb})` }}
             />
-            {buffer.fromArtist.name}
+            {group.originLabel}
           </span>
         ) : (
-          <span className="rounded-md bg-secondary px-1.5 py-0.5 text-muted-foreground">
-            (start of day)
+          <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[11px] text-muted-foreground">
+            {OUTSIDE_LABEL}
           </span>
         )}
         <ArrowRight className="size-3 text-muted-foreground" />
-        {buffer.toArtist ? (
-          <span
-            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5"
-            style={{
-              backgroundColor: `rgb(${toPalette!.rgb} / 0.2)`,
-              color: `rgb(${toPalette!.rgb})`,
-            }}
-            title={buffer.toArtist.stage}
-          >
-            <span
-              className="size-1.5 rounded-full"
-              style={{ backgroundColor: `rgb(${toPalette!.rgb})` }}
+        <div className="flex flex-wrap items-center gap-1">
+          {group.members.map(({ member }) => (
+            <MemberChip
+              key={member._id}
+              name={member.name}
+              color={member.color}
+              size="xs"
+              isYou={member._id === myMemberId}
+              truncate
             />
-            {buffer.toArtist.name}
-          </span>
-        ) : (
-          <span className="rounded-md bg-secondary px-1.5 py-0.5 text-muted-foreground">
-            (end of day)
-          </span>
-        )}
+          ))}
+        </div>
       </div>
     </div>
   );

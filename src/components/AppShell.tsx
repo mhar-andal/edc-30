@@ -45,8 +45,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
           <NavLink to="/schedule" className="flex items-center gap-2">
-            <span className="grid size-7 place-items-center rounded-md bg-primary/15 text-primary font-bold text-sm">
-              E
+            <span className="grid h-7 place-items-center rounded-md bg-primary/15 px-2 text-primary font-bold text-xs tracking-wide">
+              EDC 2026
             </span>
             <span className="hidden text-sm font-semibold tracking-wide sm:inline">
               EDC Schedule
@@ -181,7 +181,7 @@ function MemberMenu({
     if (offline) return;
     if (
       !confirm(
-        "Delete your member? Your selections + meetups you authored are removed and your local session is cleared.",
+        "Delete yourself? Your picks + meetups you authored will be removed and your local session is cleared.",
       )
     )
       return;

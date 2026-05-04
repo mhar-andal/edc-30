@@ -94,6 +94,15 @@ export function intersect(
 export const BUFFER_MINUTES = 15;
 export const BUFFER_MS = BUFFER_MINUTES * 60 * 1000;
 
+/**
+ * Maximum allowed gap between two consecutive picks for a "between"
+ * buffer to be considered a real transition window. If the gap is
+ * larger than this, the user is just skipping that slot (going home,
+ * grabbing food, etc.) and we don't surface convergences across it.
+ */
+export const MAX_BUFFER_GAP_MINUTES = 30;
+export const MAX_BUFFER_GAP_MS = MAX_BUFFER_GAP_MINUTES * 60 * 1000;
+
 export function formatRange(startMs: number, endMs: number): string {
   return `${formatTime(startMs)} → ${formatTime(endMs)}`;
 }

@@ -1,4 +1,4 @@
-import { BUFFER_MS, type DayKey } from "./time";
+import { BUFFER_MS, MAX_BUFFER_GAP_MS, type DayKey } from "./time";
 import type { Id, Doc } from "../../convex/_generated/dataModel";
 import type { Artist } from "./useScheduleData";
 
@@ -16,14 +16,28 @@ export interface MemberJourney {
   buffers: BufferWindow[];
 }
 
+/**
+ * A convergence is a group of 2+ members heading to the same
+ * destination stage with mutually overlapping buffer windows, where
+ * at least 2 distinct origin stages are represented.
+ *
+ * Convergences are computed live from current selections — they are
+ * never persisted. A meetup, when created, is pinned to the
+ * convergence by `(day, windowStart, windowEnd, destinationStage)`.
+ */
 export interface Convergence {
-  memberAId: Id<"members">;
-  memberBId: Id<"members">;
+  day: DayKey;
   windowStart: number;
   windowEnd: number;
-  bufferA: BufferWindow;
-  bufferB: BufferWindow;
+  destinationStage: string;
+  destinationArtist: Artist;
+  /** Per-member buffer details (where each one is coming from). */
+  byMember: Map<Id<"members">, BufferWindow>;
+  /** Sorted list of member ids participating in this convergence. */
+  memberIds: Id<"members">[];
 }
+
+const OUTSIDE_ORIGIN = "__outside";
 
 export function buildJourney(
   memberId: Id<"members">,
@@ -51,6 +65,12 @@ export function buildJourney(
   for (let i = 0; i < artists.length - 1; i++) {
     const a = artists[i];
     const b = artists[i + 1];
+    // Skip gap-spanning "between" buffers. If the time between two
+    // consecutive picks is larger than MAX_BUFFER_GAP_MS, we treat
+    // that as the user skipping a slot, not transitioning between
+    // back-to-back sets.
+    const gap = b.startMs - a.endMs;
+    if (gap > MAX_BUFFER_GAP_MS) continue;
     const start = a.endMs - BUFFER_MS;
     const end = b.startMs + BUFFER_MS;
     if (end > start) {
@@ -69,125 +89,163 @@ export function buildJourney(
   return { memberId, artists, buffers };
 }
 
-/**
- * A convergence requires that the two members are heading to the SAME next
- * stage but coming FROM different stages (treating "outside the festival" as
- * its own distinct origin for pre-day buffers). End-of-day post buffers (no
- * toArtist) never qualify because there is no shared next stage.
- */
-function isMeetupCompatible(ba: BufferWindow, bb: BufferWindow): boolean {
-  if (!ba.toArtist || !bb.toArtist) return false;
-  if (ba.toArtist.stage !== bb.toArtist.stage) return false;
-  const fromA = ba.fromArtist?.stage ?? "__outside";
-  const fromB = bb.fromArtist?.stage ?? "__outside";
-  if (fromA === fromB) return false;
-  return true;
+interface BufferEntry {
+  memberId: Id<"members">;
+  buffer: BufferWindow;
 }
 
+interface SweepEvent {
+  time: number;
+  type: "enter" | "exit";
+  entry: BufferEntry;
+}
+
+/**
+ * Active-set sweep per destination stage. We emit one Convergence per
+ * maximal contiguous period where ≥2 people from ≥2 distinct origin
+ * stages are converging on the same destination. People joining or
+ * leaving DURING such a period are accumulated into the same
+ * convergence — we don't fragment into multiple cards each time
+ * the active set changes. The window is the full qualifying interval
+ * (first moment ≥2/≥2 was met → last moment it was still met), and
+ * the listed members are everyone who was active at any point.
+ */
 export function findConvergences(
   journeys: MemberJourney[],
+  day: DayKey,
 ): Convergence[] {
-  const out: Convergence[] = [];
-  for (let i = 0; i < journeys.length; i++) {
-    for (let j = i + 1; j < journeys.length; j++) {
-      const a = journeys[i];
-      const b = journeys[j];
-      for (const ba of a.buffers) {
-        for (const bb of b.buffers) {
-          const start = Math.max(ba.start, bb.start);
-          const end = Math.min(ba.end, bb.end);
-          if (end <= start) continue;
-          if (!isMeetupCompatible(ba, bb)) continue;
-          const [aId, bId] =
-            a.memberId < b.memberId
-              ? [a.memberId, b.memberId]
-              : [b.memberId, a.memberId];
-          const [bufA, bufB] =
-            a.memberId < b.memberId ? [ba, bb] : [bb, ba];
-          out.push({
-            memberAId: aId,
-            memberBId: bId,
-            windowStart: start,
-            windowEnd: end,
-            bufferA: bufA,
-            bufferB: bufB,
-          });
+  const byStage = new Map<string, BufferEntry[]>();
+  for (const j of journeys) {
+    for (const buffer of j.buffers) {
+      if (!buffer.toArtist) continue;
+      const arr = byStage.get(buffer.toArtist.stage) ?? [];
+      arr.push({ memberId: j.memberId, buffer });
+      byStage.set(buffer.toArtist.stage, arr);
+    }
+  }
+
+  const convergences: Convergence[] = [];
+
+  for (const [stage, entries] of byStage) {
+    const events: SweepEvent[] = [];
+    for (const entry of entries) {
+      events.push({ time: entry.buffer.start, type: "enter", entry });
+      events.push({ time: entry.buffer.end, type: "exit", entry });
+    }
+    // 'enter' before 'exit' at the same instant so back-to-back
+    // intervals are treated as overlapping at the boundary.
+    events.sort((a, b) => {
+      if (a.time !== b.time) return a.time - b.time;
+      if (a.type !== b.type) return a.type === "enter" ? -1 : 1;
+      return 0;
+    });
+
+    const active = new Map<Id<"members">, BufferWindow>();
+    let segmentStart: number | null = null;
+    // Union of every member who was active at any point during the
+    // currently-open qualifying segment. Used as the convergence's
+    // member roster on emit.
+    let segmentUnion: Map<Id<"members">, BufferWindow> | null = null;
+
+    function qualifies(set: Map<Id<"members">, BufferWindow>): boolean {
+      if (set.size < 2) return false;
+      const origins = new Set<string>();
+      for (const buf of set.values()) {
+        origins.add(buf.fromArtist?.stage ?? OUTSIDE_ORIGIN);
+      }
+      return origins.size >= 2;
+    }
+
+    function emit(end: number) {
+      if (segmentStart === null || segmentUnion === null) return;
+      if (end <= segmentStart) return;
+      let destinationArtist: Artist | null = null;
+      for (const buf of segmentUnion.values()) {
+        if (buf.toArtist) {
+          destinationArtist = buf.toArtist;
+          break;
         }
+      }
+      if (!destinationArtist) return;
+      const ids = Array.from(segmentUnion.keys()).sort();
+      convergences.push({
+        day,
+        windowStart: segmentStart,
+        windowEnd: end,
+        destinationStage: stage,
+        destinationArtist,
+        byMember: new Map(segmentUnion),
+        memberIds: ids,
+      });
+    }
+
+    for (const ev of events) {
+      const wasQualifying = segmentStart !== null;
+
+      // Apply event.
+      if (ev.type === "enter") {
+        active.set(ev.entry.memberId, ev.entry.buffer);
+      } else if (active.get(ev.entry.memberId) === ev.entry.buffer) {
+        // Only delete if this exact buffer is still active
+        // (a later enter for the same member may have replaced it).
+        active.delete(ev.entry.memberId);
+      }
+
+      const isQualifying = qualifies(active);
+
+      if (!wasQualifying && isQualifying) {
+        // Just became qualifying — open a new segment.
+        segmentStart = ev.time;
+        segmentUnion = new Map(active);
+      } else if (wasQualifying && isQualifying) {
+        // Still qualifying — accumulate any new active members into
+        // the union (a leave doesn't remove them from the segment
+        // roster; they were part of the meetup while present).
+        for (const [id, buf] of active) {
+          if (!segmentUnion!.has(id)) segmentUnion!.set(id, buf);
+        }
+      } else if (wasQualifying && !isQualifying) {
+        // Just dropped below qualifying — emit the segment.
+        emit(ev.time);
+        segmentStart = null;
+        segmentUnion = null;
       }
     }
   }
-  return out.sort((x, y) => x.windowStart - y.windowStart);
+
+  return convergences.sort((a, b) => a.windowStart - b.windowStart);
 }
 
-export function suggestMeetupStage(
-  bufferA: BufferWindow,
-  bufferB: BufferWindow,
-): string | undefined {
-  if (
-    bufferA.toArtist &&
-    bufferB.toArtist &&
-    bufferA.toArtist.stage === bufferB.toArtist.stage
-  ) {
-    return bufferA.toArtist.stage;
-  }
-  return undefined;
+export function suggestMeetupStage(conv: Convergence): string {
+  return conv.destinationStage;
 }
 
 export function meetupKey(
   day: DayKey,
   windowStart: number,
   windowEnd: number,
-  memberAId: Id<"members">,
-  memberBId: Id<"members">,
+  destinationStage: string,
 ): string {
-  const [a, b] =
-    memberAId < memberBId ? [memberAId, memberBId] : [memberBId, memberAId];
-  return `${day}|${windowStart}|${windowEnd}|${a}|${b}`;
-}
-
-export interface ConvergenceContext {
-  fromArtistA: Artist | null;
-  fromArtistB: Artist | null;
-  toArtist: Artist | null;
+  return `${day}|${windowStart}|${windowEnd}|${destinationStage}`;
 }
 
 /**
- * Given a saved meetup and the relevant per-member journeys, derives the
- * concrete artists involved: where each side is coming from and the shared
- * destination they're both heading to.
+ * Resolve a saved meetup back to the live convergence (if any) so the
+ * UI can show currently-participating members.
  */
-export function deriveConvergenceContext(
+export function findConvergenceForMeetup(
   meetup: Doc<"meetups">,
-  journeyA: MemberJourney | null,
-  journeyB: MemberJourney | null,
-): ConvergenceContext {
-  function findBuffer(j: MemberJourney | null): BufferWindow | null {
-    if (!j) return null;
-    return (
-      j.buffers.find(
-        (b) => Math.abs(b.end - meetup.windowEndMs) < 60_000,
-      ) ?? null
-    );
+  convergences: Convergence[],
+): Convergence | null {
+  const targetKey = meetupKey(
+    meetup.day,
+    meetup.windowStartMs,
+    meetup.windowEndMs,
+    meetup.destinationStage,
+  );
+  for (const c of convergences) {
+    const k = meetupKey(c.day, c.windowStart, c.windowEnd, c.destinationStage);
+    if (k === targetKey) return c;
   }
-  const a = findBuffer(journeyA);
-  const b = findBuffer(journeyB);
-  return {
-    fromArtistA: a?.fromArtist ?? null,
-    fromArtistB: b?.fromArtist ?? null,
-    toArtist: a?.toArtist ?? b?.toArtist ?? null,
-  };
-}
-
-export function findOrphanedMeetups(
-  meetups: Doc<"meetups">[],
-  liveKeys: Set<string>,
-): Doc<"meetups">[] {
-  return meetups
-    .filter(
-      (m) =>
-        !liveKeys.has(
-          meetupKey(m.day, m.windowStartMs, m.windowEndMs, m.memberAId, m.memberBId),
-        ),
-    )
-    .sort((a, b) => a.windowStartMs - b.windowStartMs);
+  return null;
 }

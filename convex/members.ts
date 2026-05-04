@@ -100,25 +100,9 @@ export const remove = mutation({
       .collect();
     for (const s of selections) await ctx.db.delete(s._id);
 
-    const meetupsAsA = await ctx.db
-      .query("meetups")
-      .filter((q) => q.eq(q.field("memberAId"), memberId))
-      .collect();
-    const meetupsAsB = await ctx.db
-      .query("meetups")
-      .filter((q) => q.eq(q.field("memberBId"), memberId))
-      .collect();
-    const meetupsAuthored = await ctx.db
-      .query("meetups")
-      .filter((q) => q.eq(q.field("editedByMemberId"), memberId))
-      .collect();
-    const seen = new Set<string>();
-    for (const m of [...meetupsAsA, ...meetupsAsB, ...meetupsAuthored]) {
-      if (seen.has(m._id)) continue;
-      seen.add(m._id);
-      await ctx.db.delete(m._id);
-    }
-
+    // Meetups are pinned to a convergence (day + window + destination
+    // stage), not to any particular members, so they survive when a
+    // member leaves. Nothing to clean up on the meetups table.
     await ctx.db.delete(memberId);
   },
 });
