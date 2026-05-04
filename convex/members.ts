@@ -103,6 +103,28 @@ export const remove = mutation({
     // Meetups are pinned to a convergence (day + window + destination
     // stage), not to any particular members, so they survive when a
     // member leaves. Nothing to clean up on the meetups table.
+
+    // Sidequests authored by this member are deleted along with their
+    // participant rows. RSVPs by this member to other people's
+    // sidequests just get the participant row removed.
+    const authoredSidequests = await ctx.db
+      .query("sidequests")
+      .withIndex("by_creator", (q) => q.eq("createdByMemberId", memberId))
+      .collect();
+    for (const sq of authoredSidequests) {
+      const ps = await ctx.db
+        .query("sidequestParticipants")
+        .withIndex("by_sidequest", (q) => q.eq("sidequestId", sq._id))
+        .collect();
+      for (const p of ps) await ctx.db.delete(p._id);
+      await ctx.db.delete(sq._id);
+    }
+    const myRsvps = await ctx.db
+      .query("sidequestParticipants")
+      .withIndex("by_member", (q) => q.eq("memberId", memberId))
+      .collect();
+    for (const r of myRsvps) await ctx.db.delete(r._id);
+
     await ctx.db.delete(memberId);
   },
 });

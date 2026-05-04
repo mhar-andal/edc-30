@@ -81,7 +81,7 @@ export default function Coordinate() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto w-full max-w-7xl space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">Your meetup opportunities</h2>

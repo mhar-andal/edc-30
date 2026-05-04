@@ -68,7 +68,7 @@ export default function Meetups() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="mx-auto w-full max-w-7xl space-y-4">
       <header>
         <h2 className="text-xl font-semibold">Your meetups</h2>
         <p className="text-sm text-muted-foreground">

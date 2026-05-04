@@ -56,4 +56,33 @@ export default defineSchema({
       "windowEndMs",
       "destinationStage",
     ]),
+
+  /**
+   * Ad-hoc, member-created events that are NOT tied to an artist set
+   * (e.g. "tacos at 8pm", "ferris wheel at midnight"). Confined to a
+   * single festival day; cannot cross midnight. Edit/delete is restricted
+   * to the creator; any member may join/leave via `sidequestParticipants`.
+   */
+  sidequests: defineTable({
+    day: v.union(v.literal("day_1"), v.literal("day_2"), v.literal("day_3")),
+    title: v.string(),
+    location: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    startMs: v.number(),
+    endMs: v.number(),
+    createdByMemberId: v.id("members"),
+    createdAt: v.number(),
+    editedAt: v.number(),
+  })
+    .index("by_day_start", ["day", "startMs"])
+    .index("by_creator", ["createdByMemberId"]),
+
+  sidequestParticipants: defineTable({
+    sidequestId: v.id("sidequests"),
+    memberId: v.id("members"),
+    joinedAt: v.number(),
+  })
+    .index("by_sidequest", ["sidequestId"])
+    .index("by_member", ["memberId"])
+    .index("by_sidequest_member", ["sidequestId", "memberId"]),
 });

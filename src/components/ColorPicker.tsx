@@ -34,7 +34,11 @@ export function ColorPicker({
 }: Props) {
   const ownerByColor = new Map<string, string>();
   for (const t of takenBy ?? []) {
-    ownerByColor.set(t.color.toLowerCase(), t.name);
+    // Defensively guard against partially-hydrated rows (e.g. an offline
+    // cache snapshot from an earlier schema). A missing color would
+    // otherwise crash the whole picker.
+    if (typeof t?.color !== "string" || !t.color) continue;
+    ownerByColor.set(t.color.toLowerCase(), t.name ?? "");
   }
 
   const [openOwnerKey, setOpenOwnerKey] = useState<string | null>(null);
