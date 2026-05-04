@@ -11,16 +11,26 @@ interface Props {
   sourceMemberName: string;
   targetMemberId: Id<"members">;
   day: DayKey;
-  /** Source member's pick count for the day. 0 disables the button. */
+  /** Source member's pick count for the day. */
   sourceDayPickCount: number;
+  /** Source member's sidequest-RSVP count for the day. */
+  sourceDaySidequestCount: number;
   className?: string;
 }
 
+interface CopyResult {
+  picksAdded: number;
+  picksSkipped: number;
+  rsvpsAdded: number;
+  rsvpsSkipped: number;
+}
+
 /**
- * Inline copy-picks action: clicking it directly copies the source
- * member's picks for the given day into the target member's picks
- * (mode "add" — duplicates are skipped). Shows result inline once
- * complete; no nested dialog.
+ * Inline copy action: copies the source member's artist picks AND
+ * sidequest RSVPs for the given day onto the target member. Mode is
+ * "add" — duplicates are skipped on both sides. Shows a compact
+ * inline result chip when finished. Disabled when the source has
+ * nothing to copy on this day.
  */
 export function CopyDayPicksButton({
   sourceMemberId,
@@ -28,31 +38,46 @@ export function CopyDayPicksButton({
   targetMemberId,
   day,
   sourceDayPickCount,
+  sourceDaySidequestCount,
   className,
 }: Props) {
-  const copy = useMutation(api.memberSelections.copyFromMember);
+  const copyPicks = useMutation(api.memberSelections.copyFromMember);
+  const copyRsvps = useMutation(api.sidequests.copyRsvpsFromMember);
   const offline = useIsOffline();
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<
-    | { added: number; skipped: number; removed: number }
-    | null
-  >(null);
+  const [result, setResult] = useState<CopyResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const disabled = offline || sourceDayPickCount === 0 || busy;
+  const nothingToCopy =
+    sourceDayPickCount === 0 && sourceDaySidequestCount === 0;
+  const disabled = offline || nothingToCopy || busy;
 
   async function handleCopy() {
     if (disabled) return;
     setBusy(true);
     setError(null);
     try {
-      const r = await copy({
-        sourceMemberId,
-        targetMemberId,
-        mode: "add",
-        day,
+      // Run sequentially so we get crisp counts for each side; both run
+      // against tiny tables so the latency is negligible.
+      const picksResult =
+        sourceDayPickCount > 0
+          ? await copyPicks({
+              sourceMemberId,
+              targetMemberId,
+              mode: "add",
+              day,
+            })
+          : { added: 0, skipped: 0, removed: 0 };
+      const rsvpsResult =
+        sourceDaySidequestCount > 0
+          ? await copyRsvps({ sourceMemberId, targetMemberId, day })
+          : { joined: 0, skipped: 0 };
+      setResult({
+        picksAdded: picksResult.added,
+        picksSkipped: picksResult.skipped,
+        rsvpsAdded: rsvpsResult.joined,
+        rsvpsSkipped: rsvpsResult.skipped,
       });
-      setResult(r);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
     } finally {
@@ -61,6 +86,18 @@ export function CopyDayPicksButton({
   }
 
   if (result) {
+    const parts: string[] = [];
+    if (result.picksAdded > 0)
+      parts.push(`${result.picksAdded} pick${result.picksAdded === 1 ? "" : "s"}`);
+    if (result.rsvpsAdded > 0)
+      parts.push(
+        `${result.rsvpsAdded} sidequest${result.rsvpsAdded === 1 ? "" : "s"}`,
+      );
+    const totalSkipped = result.picksSkipped + result.rsvpsSkipped;
+    const summary =
+      parts.length === 0
+        ? "Nothing new to add"
+        : `Added ${parts.join(" + ")}`;
     return (
       <span
         className={
@@ -69,8 +106,8 @@ export function CopyDayPicksButton({
         }
       >
         <Check className="size-3" />
-        Added {result.added}
-        {result.skipped > 0 ? ` · skipped ${result.skipped}` : ""}
+        {summary}
+        {totalSkipped > 0 ? ` · skipped ${totalSkipped}` : ""}
       </span>
     );
   }
@@ -82,10 +119,10 @@ export function CopyDayPicksButton({
       onClick={handleCopy}
       title={
         offline
-          ? "Offline — reconnect to copy picks"
-          : sourceDayPickCount === 0
-            ? `${sourceMemberName} hasn't picked anything for this day`
-            : `Copy ${sourceMemberName}'s picks for this day`
+          ? "Offline — reconnect to copy"
+          : nothingToCopy
+            ? `${sourceMemberName} has nothing for this day`
+            : `Copy ${sourceMemberName}'s picks and sidequests for this day`
       }
       className={
         "inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-border/60 bg-background/40 px-2.5 text-[11px] font-medium text-foreground transition-colors hover:bg-background disabled:cursor-not-allowed disabled:opacity-40 " +

@@ -7,6 +7,9 @@ import { useMemberSession } from "./useMemberSession";
 
 export type Artist = Doc<"artists">;
 export type Member = Doc<"members">;
+export type Sidequest = Doc<"sidequests"> & {
+  participantMemberIds: Array<Id<"members">>;
+};
 
 export interface ScheduleData {
   loading: boolean;
@@ -17,6 +20,8 @@ export interface ScheduleData {
   artistsByDay: Map<DayKey, Artist[]>;
   artistsById: Map<string, Artist>;
   membersById: Map<string, Member>;
+  sidequests: Sidequest[];
+  sidequestsByDay: Map<DayKey, Sidequest[]>;
   /**
    * For the current device's member, maps an artistId to the set of THEIR
    * already-picked artists that overlap on a different stage. Used to flag
@@ -29,6 +34,7 @@ export function useScheduleData(): ScheduleData {
   const artists = useCachedQuery(api.artists.listAll);
   const members = useCachedQuery(api.members.list);
   const selections = useCachedQuery(api.memberSelections.listAll);
+  const sidequests = useCachedQuery(api.sidequests.listAll);
   const session = useMemberSession();
   const myMemberId = session.status === "authed" ? session.memberId : null;
 
@@ -36,6 +42,7 @@ export function useScheduleData(): ScheduleData {
     const artistsArr: Artist[] = artists ?? [];
     const membersArr: Member[] = members ?? [];
     const selsArr = selections ?? [];
+    const sidequestsArr: Sidequest[] = sidequests ?? [];
 
     const selectionsByMember = new Map<string, Set<string>>();
     const selectionsByArtist = new Map<string, Array<Id<"members">>>();
@@ -94,11 +101,26 @@ export function useScheduleData(): ScheduleData {
       }
     }
 
+    const sidequestsByDay = new Map<DayKey, Sidequest[]>([
+      ["day_1", []],
+      ["day_2", []],
+      ["day_3", []],
+    ]);
+    for (const sq of sidequestsArr) {
+      const arr = sidequestsByDay.get(sq.day) ?? [];
+      arr.push(sq);
+      sidequestsByDay.set(sq.day, arr);
+    }
+    for (const arr of sidequestsByDay.values()) {
+      arr.sort((a, b) => a.startMs - b.startMs);
+    }
+
     return {
       loading:
         artists === undefined ||
         members === undefined ||
-        selections === undefined,
+        selections === undefined ||
+        sidequests === undefined,
       artists: artistsArr,
       members: membersArr,
       selectionsByMember,
@@ -106,7 +128,9 @@ export function useScheduleData(): ScheduleData {
       artistsByDay,
       artistsById,
       membersById,
+      sidequests: sidequestsArr,
+      sidequestsByDay,
       myOverlapsByArtist,
     };
-  }, [artists, members, selections, myMemberId]);
+  }, [artists, members, selections, sidequests, myMemberId]);
 }

@@ -27,6 +27,12 @@ interface Props {
    * next to each row.
    */
   pickCountForDay: (memberId: Id<"members">) => number;
+  /**
+   * Number of sidequests on the active day that this member is a
+   * participant in (creator counts). Used for the secondary count in
+   * each dialog row and for enabling/disabling the Copy button.
+   */
+  sidequestCountForDay: (memberId: Id<"members">) => number;
 }
 
 export function CopyFromPersonDialog({
@@ -34,6 +40,7 @@ export function CopyFromPersonDialog({
   myMemberId,
   day,
   pickCountForDay,
+  sidequestCountForDay,
 }: Props) {
   const [open, setOpen] = useState(false);
   const offline = useIsOffline();
@@ -62,9 +69,10 @@ export function CopyFromPersonDialog({
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Copy someone&apos;s picks for {dayLabel}</DialogTitle>
+          <DialogTitle>Copy someone&apos;s plan for {dayLabel}</DialogTitle>
           <DialogDescription>
-            Adds their picks for this day to your own. Duplicates are skipped.
+            Adds their artist picks AND sidequest RSVPs for this day to your
+            own. Duplicates are skipped.
           </DialogDescription>
         </DialogHeader>
 
@@ -77,7 +85,8 @@ export function CopyFromPersonDialog({
               </div>
             ) : (
               others.map((m) => {
-                const count = pickCountForDay(m._id);
+                const pickCount = pickCountForDay(m._id);
+                const sqCount = sidequestCountForDay(m._id);
                 return (
                   <div
                     key={m._id}
@@ -89,7 +98,10 @@ export function CopyFromPersonDialog({
                         {m.name}
                       </span>
                       <span className="shrink-0 text-[11px] text-muted-foreground">
-                        · {count} pick{count === 1 ? "" : "s"}
+                        · {pickCount} pick{pickCount === 1 ? "" : "s"}
+                        {sqCount > 0
+                          ? ` · ${sqCount} sidequest${sqCount === 1 ? "" : "s"}`
+                          : ""}
                       </span>
                     </div>
                     <CopyDayPicksButton
@@ -97,7 +109,8 @@ export function CopyFromPersonDialog({
                       sourceMemberName={m.name}
                       targetMemberId={myMemberId}
                       day={day}
-                      sourceDayPickCount={count}
+                      sourceDayPickCount={pickCount}
+                      sourceDaySidequestCount={sqCount}
                     />
                   </div>
                 );

@@ -6,7 +6,7 @@ import {
   Loader2,
   Plus,
 } from "lucide-react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id, Doc } from "../../../convex/_generated/dataModel";
 import { MemberChip } from "@/components/MemberChip";
@@ -169,29 +169,56 @@ export function ArtistCard({
           </button>
         )}
       </div>
-      {density === "normal" &&
-        myOverlapping &&
-        myOverlapping.length > 0 && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                onClick={(e) => e.stopPropagation()}
-                className="mt-1 inline-flex w-fit items-center gap-1 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-200 ring-1 ring-amber-500/40 transition-colors hover:bg-amber-500/25"
-                title="Conflicts with your picks"
-              >
-                <AlertTriangle className="size-2.5 shrink-0" />
-                <span className="truncate">
-                  Overlaps with {myOverlapping[0].name}
-                  {myOverlapping.length > 1
-                    ? ` +${myOverlapping.length - 1}`
-                    : ""}
+      {myOverlapping && myOverlapping.length > 0 && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                "flex w-full max-w-full rounded-md bg-amber-500/15 font-medium text-amber-200 ring-1 ring-amber-500/40 transition-colors hover:bg-amber-500/25",
+                density === "compact"
+                  ? "mt-0.5 flex-row items-center gap-1 px-1 py-0.5 text-[9px]"
+                  : "mt-1 flex-col gap-0.5 px-1.5 py-1 text-[10px]",
+              )}
+              title="You've already picked another set at this time — tap for details"
+            >
+              {density === "normal" && (
+                <span className="flex items-center gap-1 text-[9px] uppercase tracking-wide opacity-80">
+                  <AlertTriangle className="size-2.5 shrink-0" />
+                  You&apos;re already going to
                 </span>
-              </button>
-            </PopoverTrigger>
-            <OverlapPopoverContent items={myOverlapping} />
-          </Popover>
-        )}
+              )}
+              <span className="flex w-full min-w-0 items-center gap-1">
+                {density === "compact" && (
+                  <AlertTriangle className="size-2.5 shrink-0" />
+                )}
+                {density === "compact" && (
+                  <span className="shrink-0 opacity-80">Going to</span>
+                )}
+                <span
+                  className="truncate font-semibold"
+                  style={{
+                    color: `rgb(${getStagePalette(myOverlapping[0].stage).rgb})`,
+                  }}
+                >
+                  {myOverlapping[0].name}
+                </span>
+                <span className="shrink-0 whitespace-nowrap tabular-nums opacity-80">
+                  {formatTime(myOverlapping[0].startMs)}–
+                  {formatTime(myOverlapping[0].endMs)}
+                </span>
+                {myOverlapping.length > 1 && (
+                  <span className="shrink-0 rounded-full bg-amber-500/30 px-1 text-[9px] font-semibold text-amber-100 ring-1 ring-amber-500/50">
+                    +{myOverlapping.length - 1}
+                  </span>
+                )}
+              </span>
+            </button>
+          </PopoverTrigger>
+          <OverlapPopoverContent items={myOverlapping} />
+        </Popover>
+      )}
       <div className="mt-1 flex min-w-0 items-center">
         {pickedByMemberIds.length === 0 ? (
           <span className="text-[10px] text-muted-foreground/70">
@@ -229,25 +256,6 @@ export function ArtistCard({
           myMemberId={myMemberId!}
         />
       )}
-      {density === "compact" && myOverlapping && myOverlapping.length > 0 && (
-        <div className="pointer-events-none absolute right-1 top-1 flex items-center gap-1">
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                onClick={(e) => e.stopPropagation()}
-                title={`Overlaps with ${myOverlapping.length} of your picks`}
-                aria-label={`Overlaps with ${myOverlapping.length} of your picks`}
-                className="pointer-events-auto inline-flex h-4 items-center gap-0.5 rounded-full bg-amber-500/25 px-1 text-[9px] font-semibold text-amber-200 ring-1 ring-amber-500/50 transition-colors hover:bg-amber-500/40"
-              >
-                <AlertTriangle className="size-2.5" />
-                {myOverlapping.length > 1 ? myOverlapping.length : ""}
-              </button>
-            </PopoverTrigger>
-            <OverlapPopoverContent items={myOverlapping} />
-          </Popover>
-        </div>
-      )}
     </div>
   );
 }
@@ -264,7 +272,7 @@ function OverlapPopoverContent({
     >
       <div className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-amber-200">
         <AlertTriangle className="size-3" />
-        Overlaps with your picks
+        You&apos;re already going to
       </div>
       <ul className="space-y-1 text-xs">
         {items.map((o) => {
@@ -275,7 +283,12 @@ function OverlapPopoverContent({
                 className="size-1.5 rounded-full"
                 style={{ backgroundColor: `rgb(${pal.rgb})` }}
               />
-              <span className="truncate font-medium">{o.name}</span>
+              <span
+                className="truncate font-medium"
+                style={{ color: `rgb(${pal.rgb})` }}
+              >
+                {o.name}
+              </span>
               <span className="ml-auto whitespace-nowrap text-[10px] tabular-nums text-muted-foreground">
                 {formatTime(o.startMs)}–{formatTime(o.endMs)}
               </span>
@@ -299,7 +312,12 @@ function AttendeesStrip({
   membersById: Map<string, Member>;
   myMemberId: Id<"members"> | null;
 }) {
-  const ref = useAutoScroll<HTMLDivElement>({ endBehavior: "loop" });
+  const [overflows, setOverflows] = useState(false);
+  const ref = useAutoScroll<HTMLDivElement>({
+    endBehavior: overflows ? "loop" : "reset",
+  });
+  const firstSetRef = useRef<HTMLDivElement | null>(null);
+
   const chips = pickedByMemberIds
     .map((mid) => {
       const m = membersById.get(mid);
@@ -308,29 +326,34 @@ function AttendeesStrip({
     })
     .filter((x): x is { mid: Id<"members">; member: Member; isYou: boolean } => x !== null);
 
+  // Track whether the first chip set actually overflows the visible
+  // strip width. We only render the duplicate set when it does, so
+  // non-overflowing rows don't visually duplicate every name.
+  useLayoutEffect(() => {
+    const container = ref.current;
+    const firstSet = firstSetRef.current;
+    if (!container || !firstSet) return;
+    function check() {
+      if (!container || !firstSet) return;
+      setOverflows(firstSet.scrollWidth > container.clientWidth + 1);
+    }
+    const ro = new ResizeObserver(check);
+    ro.observe(container);
+    ro.observe(firstSet);
+    check();
+    return () => ro.disconnect();
+  }, [ref, chips.length]);
+
   return (
     <div
       ref={ref}
       onClick={(e) => e.stopPropagation()}
       className="-mx-0.5 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
-      {chips.map(({ mid, member, isYou }) => (
-        <MemberChip
-          key={mid}
-          name={member.name}
-          color={member.color}
-          size="xs"
-          isYou={isYou}
-          className="shrink-0"
-        />
-      ))}
-      <div
-        aria-hidden
-        className="contents"
-      >
+      <div ref={firstSetRef} className="flex shrink-0 items-center gap-1">
         {chips.map(({ mid, member, isYou }) => (
           <MemberChip
-            key={`dup-${mid}`}
+            key={mid}
             name={member.name}
             color={member.color}
             size="xs"
@@ -339,6 +362,23 @@ function AttendeesStrip({
           />
         ))}
       </div>
+      {overflows && (
+        <div
+          aria-hidden
+          className="flex shrink-0 items-center gap-1"
+        >
+          {chips.map(({ mid, member, isYou }) => (
+            <MemberChip
+              key={`dup-${mid}`}
+              name={member.name}
+              color={member.color}
+              size="xs"
+              isYou={isYou}
+              className="shrink-0"
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

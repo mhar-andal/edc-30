@@ -85,7 +85,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </header>
       <main className="flex-1 overflow-y-auto">
         <div
-          className="mx-auto w-full max-w-7xl px-3 pt-3 sm:px-6 sm:pb-10"
+          className="w-full px-3 pt-3 sm:px-6 sm:pb-10"
           style={{
             paddingBottom:
               "max(6rem, calc(env(safe-area-inset-bottom) + 5rem))",

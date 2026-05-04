@@ -93,7 +93,13 @@ export const seedFestival = mutation({
 export const clearAllUserData = mutation({
   args: {},
   handler: async (ctx) => {
-    for (const name of ["meetups", "memberSelections", "members"] as const) {
+    for (const name of [
+      "meetups",
+      "sidequestParticipants",
+      "sidequests",
+      "memberSelections",
+      "members",
+    ] as const) {
       const rows = await ctx.db.query(name).collect();
       for (const r of rows) await ctx.db.delete(r._id);
     }
@@ -146,10 +152,6 @@ const CLIQUES: DemoClique[] = [
       { name: "Brandon", color: "#38bdf8" },
       { name: "Jedd", color: "#0ea5e9" },
     ],
-  },
-  {
-    cliqueKey: "matt",
-    members: [{ name: "Matt", color: "#facc15" }],
   },
   {
     cliqueKey: "reymar-crew",
@@ -228,15 +230,6 @@ const ITINERARIES: Record<
       "Ilan Bluestone",
       "Porter Robinson",
     ],
-    matt: [
-      "1991",
-      "Bou",
-      "Nico Moreno",
-      "Levity",
-      "Wooli",
-      "The Outlaw",
-      "Porter Robinson",
-    ],
     "reymar-crew": [
       "Laidback Luke B2B",
       "Korolova",
@@ -298,15 +291,6 @@ const ITINERARIES: Record<
       "Paul Oakenfold",
       "Sammy Virji",
       "Tiësto",
-      "Above & Beyond",
-    ],
-    matt: [
-      "DJ Mandy",
-      "Roz",
-      "Kettama",
-      "Sammy Virji",
-      "Tiësto",
-      "Boys Noize",
       "Above & Beyond",
     ],
     "reymar-crew": [
@@ -378,14 +362,6 @@ const ITINERARIES: Record<
       "Martin Garrix",
       "Armin Van Buuren",
     ],
-    matt: [
-      "Linska",
-      "Anna",
-      "Beltran",
-      "Solomun",
-      "Martin Garrix",
-      "Armin Van Buuren",
-    ],
     "reymar-crew": [
       "Trace",
       "Ship Wrek",
@@ -402,7 +378,13 @@ const ITINERARIES: Record<
 export const demo = mutation({
   args: {},
   handler: async (ctx) => {
-    for (const t of ["meetups", "memberSelections", "members"] as const) {
+    for (const t of [
+      "meetups",
+      "sidequestParticipants",
+      "sidequests",
+      "memberSelections",
+      "members",
+    ] as const) {
       const rows = await ctx.db.query(t).collect();
       for (const r of rows) await ctx.db.delete(r._id);
     }
