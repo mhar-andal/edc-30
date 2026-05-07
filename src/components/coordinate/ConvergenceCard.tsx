@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 import { ArrowRight } from "lucide-react";
 import { MemberChip } from "@/components/MemberChip";
+import { CommentsSection } from "@/components/comments/CommentsSection";
 import {
   MeetupSpotPicker,
   type MeetTimeContext,
 } from "./MeetupSpotPicker";
+import { convergenceOwnerId } from "@/lib/convergenceKey";
 import { formatRange, formatTime, type DayKey } from "@/lib/time";
 import { getStagePalette } from "@/lib/colors";
 import { cn } from "@/lib/utils";
@@ -137,6 +139,20 @@ export function ConvergenceCard({
           existing={existing}
           myMemberId={myMemberId}
           timeContext={timeContext}
+        />
+      </div>
+
+      <div className="mt-3 rounded-lg border border-border/60 bg-background/30 p-3">
+        <CommentsSection
+          ownerType="convergence"
+          ownerId={convergenceOwnerId({
+            day,
+            windowStartMs: conv.windowStart,
+            windowEndMs: conv.windowEnd,
+            destinationStage: conv.destinationStage,
+          })}
+          myMemberId={myMemberId}
+          membersById={membersById}
         />
       </div>
     </div>

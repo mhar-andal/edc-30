@@ -228,6 +228,16 @@ export const remove = mutation({
       .collect();
     for (const p of ps) await ctx.db.delete(p._id);
 
+    // Cascade: delete any comments attached to this sidequest. Convergence
+    // comments live by composite key and are unaffected.
+    const comments = await ctx.db
+      .query("comments")
+      .withIndex("by_owner", (q) =>
+        q.eq("ownerType", "sidequest").eq("ownerId", sidequestId),
+      )
+      .collect();
+    for (const c of comments) await ctx.db.delete(c._id);
+
     await ctx.db.delete(sidequestId);
   },
 });

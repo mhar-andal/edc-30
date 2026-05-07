@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { MemberChip } from "@/components/MemberChip";
+import { CommentsSection } from "@/components/comments/CommentsSection";
 import { useIsOffline } from "@/lib/useIsOffline";
 import { DAY_LABELS, formatRange } from "@/lib/time";
 import type { Member, Sidequest } from "@/lib/useScheduleData";
@@ -217,6 +218,15 @@ export function SidequestPopover({
           </Button>
         )}
       </div>
+
+      <Separator />
+
+      <CommentsSection
+        ownerType="sidequest"
+        ownerId={sidequest._id}
+        myMemberId={myMemberId}
+        membersById={membersById}
+      />
     </div>
   );
 }
