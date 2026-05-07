@@ -91,4 +91,34 @@ export default defineSchema({
     .index("by_sidequest", ["sidequestId"])
     .index("by_member", ["memberId"])
     .index("by_sidequest_member", ["sidequestId", "memberId"]),
+
+  /**
+   * Comments attached to either a sidequest or a convergence meeting.
+   *
+   * Convergences are keyed by their composite identity rather than the
+   * `meetups` row id, because a meetup row only materializes once
+   * someone sets a spot/time. Using the composite key lets the first
+   * comment on a convergence stand on its own without forcing a
+   * `meetups` insert.
+   *
+   * - Sidequest:    ownerId = `<Id<"sidequests">>` (the row id).
+   * - Convergence:  ownerId = `${day}|${windowStartMs}|${windowEndMs}|${destinationStage}`.
+   */
+  comments: defineTable({
+    ownerType: v.union(v.literal("sidequest"), v.literal("convergence")),
+    ownerId: v.string(),
+    authorMemberId: v.id("members"),
+    body: v.string(),
+    /**
+     * Member ids resolved from `@Name` tokens in `body` at write time.
+     * Used by the renderer to highlight + (eventually) drive
+     * notifications. A name that fails to resolve at write time stays
+     * as plain text and won't show up here.
+     */
+    mentionedMemberIds: v.array(v.id("members")),
+    createdAt: v.number(),
+    editedAt: v.optional(v.number()),
+  })
+    .index("by_owner", ["ownerType", "ownerId", "createdAt"])
+    .index("by_author", ["authorMemberId"]),
 });

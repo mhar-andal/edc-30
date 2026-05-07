@@ -163,7 +163,10 @@ function SidequestRow({
           </div>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-72 p-3">
+      <PopoverContent
+        align="start"
+        className="w-80 max-h-[min(80dvh,32rem)] overflow-y-auto p-3"
+      >
         <SidequestPopover
           sidequest={sidequest}
           membersById={membersById}
