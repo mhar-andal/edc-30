@@ -4,7 +4,20 @@ import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 import path from "node:path";
 
+// Build identifier embedded into the bundle. Used to invalidate the
+// IDB query cache when a deploy changes data shapes — see
+// `src/lib/offlineCache.ts`. On Vercel we get a stable per-commit
+// SHA; on local builds we fall back to a timestamp so each `npm run
+// build` is treated as fresh.
+const BUILD_ID =
+  process.env.VERCEL_GIT_COMMIT_SHA ||
+  process.env.GIT_COMMIT_SHA ||
+  `local-${Date.now()}`;
+
 export default defineConfig({
+  define: {
+    __BUILD_ID__: JSON.stringify(BUILD_ID),
+  },
   plugins: [
     react(),
     tailwindcss(),

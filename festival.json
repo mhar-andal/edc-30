@@ -1,266 +1,2462 @@
 {
-  "event": "EDC Las Vegas",
+  "event": "EDC Las Vegas 2026",
   "location": "Las Vegas, NV",
-  "stages": [
-    "Kinetic Field",
-    "Circuit Grounds",
-    "Cosmic Meadow",
-    "Basspod",
-    "Neon Garden",
-    "Quantum Valley",
-    "Stereobloom",
-    "Wasteland",
-    "Bionic Jungle"
-  ],
-  "day_1": [
-    { "artist": "Max Dean B2B Luke Dean", "stage": "Cosmic Meadow", "start": "5:00pm", "end": "6:50pm" },
-    { "artist": "Heidi Lawden B2B Masha", "stage": "Bionic Jungle", "start": "5:00pm", "end": "7:00pm" },
-    { "artist": "Laidback Luke B2B", "stage": "Kinetic Field", "start": "7:00pm", "end": "8:00pm" },
-    { "artist": "1991", "stage": "Circuit Grounds", "start": "7:00pm", "end": "8:00pm" },
-    { "artist": "Jackie Hollander", "stage": "Cosmic Meadow", "start": "7:00pm", "end": "7:55pm" },
-    { "artist": "Riot", "stage": "Basspod", "start": "7:00pm", "end": "7:50pm" },
-    { "artist": "Anastazja", "stage": "Neon Garden", "start": "7:00pm", "end": "8:30pm" },
-    { "artist": "Sarah De Warren", "stage": "Quantum Valley", "start": "7:00pm", "end": "8:00pm" },
-    { "artist": "Abana B2B Juliet", "stage": "Stereobloom", "start": "7:00pm", "end": "8:00pm" },
-    { "artist": "Domina", "stage": "Wasteland", "start": "7:00pm", "end": "8:30pm" },
-    { "artist": "Stacy Christine", "stage": "Bionic Jungle", "start": "7:00pm", "end": "8:00pm" },
-    { "artist": "Korolova", "stage": "Kinetic Field", "start": "8:00pm", "end": "9:00pm" },
-    { "artist": "Bou", "stage": "Circuit Grounds", "start": "8:00pm", "end": "9:00pm" },
-    { "artist": "Roddy Lima", "stage": "Cosmic Meadow", "start": "7:55pm", "end": "8:55pm" },
-    { "artist": "Heyz", "stage": "Basspod", "start": "7:50pm", "end": "8:40pm" },
-    { "artist": "Matty Ralph", "stage": "Quantum Valley", "start": "8:00pm", "end": "9:00pm" },
-    { "artist": "Slamm", "stage": "Stereobloom", "start": "8:00pm", "end": "9:00pm" },
-    { "artist": "Serafina", "stage": "Wasteland", "start": "8:30pm", "end": "9:30pm" },
-    { "artist": "The Carry Nation", "stage": "Bionic Jungle", "start": "8:00pm", "end": "9:30pm" },
-    { "artist": "Argy", "stage": "Kinetic Field", "start": "9:00pm", "end": "10:00pm" },
-    { "artist": "Nico Moreno", "stage": "Circuit Grounds", "start": "9:00pm", "end": "10:00pm" },
-    { "artist": "Westend", "stage": "Cosmic Meadow", "start": "8:55pm", "end": "9:55pm" },
-    { "artist": "Muzz", "stage": "Basspod", "start": "8:40pm", "end": "9:30pm" },
-    { "artist": "Mestiza", "stage": "Neon Garden", "start": "8:30pm", "end": "10:00pm" },
-    { "artist": "Cold Blue", "stage": "Quantum Valley", "start": "9:00pm", "end": "10:00pm" },
-    { "artist": "Luuk Van Dijk", "stage": "Stereobloom", "start": "9:00pm", "end": "10:15pm" },
-    { "artist": "Johannes Schuster", "stage": "Wasteland", "start": "9:30pm", "end": "10:30pm" },
-    { "artist": "Massimiliano Pagliara", "stage": "Bionic Jungle", "start": "9:30pm", "end": "11:00pm" },
-    { "artist": "Chris Lorenzo", "stage": "Kinetic Field", "start": "10:07pm", "end": "11:15pm" },
-    { "artist": "I Hate Models", "stage": "Circuit Grounds", "start": "10:00pm", "end": "11:15pm" },
-    { "artist": "Walker & Royce B2B", "stage": "Cosmic Meadow", "start": "9:55pm", "end": "10:55pm" },
-    { "artist": "Gorillat", "stage": "Basspod", "start": "9:30pm", "end": "10:30pm" },
-    { "artist": "DJ Tennis B2B Chloe Caillet", "stage": "Neon Garden", "start": "10:00pm", "end": "11:30pm" },
-    { "artist": "Pegassi", "stage": "Quantum Valley", "start": "10:00pm", "end": "11:00pm" },
-    { "artist": "Omar+", "stage": "Stereobloom", "start": "10:15pm", "end": "11:30pm" },
-    { "artist": "Adrian Mills", "stage": "Wasteland", "start": "10:30pm", "end": "11:30pm" },
-    { "artist": "Sofi Tukker", "stage": "Kinetic Field", "start": "11:19pm", "end": "12:30am" },
-    { "artist": "Levity", "stage": "Circuit Grounds", "start": "11:15pm", "end": "12:25am" },
-    { "artist": "Underworld", "stage": "Cosmic Meadow", "start": "11:10pm", "end": "12:10am" },
-    { "artist": "Ghengar", "stage": "Basspod", "start": "10:30pm", "end": "11:30pm" },
-    { "artist": "Darude", "stage": "Quantum Valley", "start": "11:00pm", "end": "12:00am" },
-    { "artist": "Luke Dean", "stage": "Stereobloom", "start": "11:30pm", "end": "12:45am" },
-    { "artist": "Cloudy", "stage": "Wasteland", "start": "11:30pm", "end": "12:30am" },
-    { "artist": "Paramida", "stage": "Bionic Jungle", "start": "11:00pm", "end": "12:30am" },
-    { "artist": "The Chainsmoker", "stage": "Kinetic Field", "start": "12:32am", "end": "1:42am" },
-    { "artist": "Wooli", "stage": "Circuit Grounds", "start": "12:25am", "end": "1:35am" },
-    { "artist": "Meduza", "stage": "Cosmic Meadow", "start": "12:25am", "end": "1:45am" },
-    { "artist": "Deathpact", "stage": "Basspod", "start": "11:30pm", "end": "12:30am" },
-    { "artist": "Atliens", "stage": "Basspod", "start": "12:30am", "end": "1:30am" },
-    { "artist": "Peggy Gou", "stage": "Neon Garden", "start": "11:30pm", "end": "1:00am" },
-    { "artist": "Adriatique", "stage": "Neon Garden", "start": "1:00am", "end": "2:30am" },
-    { "artist": "Cosmic Gate", "stage": "Quantum Valley", "start": "12:00am", "end": "1:00am" },
-    { "artist": "Gareth Emery", "stage": "Quantum Valley", "start": "1:00am", "end": "2:00am" },
-    { "artist": "Josh Baker", "stage": "Stereobloom", "start": "12:45am", "end": "2:00am" },
-    { "artist": "Kuko", "stage": "Wasteland", "start": "12:30am", "end": "1:30am" },
-    { "artist": "Salute B2B Chloe Caillet", "stage": "Bionic Jungle", "start": "12:30am", "end": "2:30am" },
-    { "artist": "Fisher", "stage": "Kinetic Field", "start": "1:47am", "end": "2:57am" },
-    { "artist": "The Outlaw", "stage": "Circuit Grounds", "start": "1:35am", "end": "2:35am" },
-    { "artist": "Notion", "stage": "Cosmic Meadow", "start": "1:47am", "end": "2:47am" },
-    { "artist": "Kai Wachi", "stage": "Basspod", "start": "1:30am", "end": "2:30am" },
-    { "artist": "Ilan Bluestone", "stage": "Quantum Valley", "start": "2:00am", "end": "3:00am" },
-    { "artist": "Max Dean", "stage": "Stereobloom", "start": "2:00am", "end": "3:15am" },
-    { "artist": "Gravedgr", "stage": "Wasteland", "start": "1:30am", "end": "2:30am" },
-    { "artist": "Porter Robinson", "stage": "Kinetic Field", "start": "3:01am", "end": "4:11am" },
-    { "artist": "Holy Priest", "stage": "Circuit Grounds", "start": "2:35am", "end": "3:30am" },
-    { "artist": "MPH", "stage": "Cosmic Meadow", "start": "2:47am", "end": "4:02am" },
-    { "artist": "Adventure Club", "stage": "Basspod", "start": "2:30am", "end": "3:30am" },
-    { "artist": "Joseph Capriati", "stage": "Neon Garden", "start": "2:30am", "end": "4:00am" },
-    { "artist": "Paul Van Dyk", "stage": "Quantum Valley", "start": "3:00am", "end": "4:00am" },
-    { "artist": "Obskur", "stage": "Stereobloom", "start": "3:15am", "end": "4:30am" },
-    { "artist": "Rebekah", "stage": "Wasteland", "start": "2:30am", "end": "3:30am" },
-    { "artist": "Robert Hood", "stage": "Bionic Jungle", "start": "2:30am", "end": "4:00am" },
-    { "artist": "Charlotte De Witte", "stage": "Kinetic Field", "start": "4:14am", "end": "5:29am" },
-    { "artist": "Ray Volpe", "stage": "Circuit Grounds", "start": "3:30am", "end": "4:30am" },
-    { "artist": "Level Up", "stage": "Circuit Grounds", "start": "4:30am", "end": "5:30am" },
-    { "artist": "San Pacho", "stage": "Cosmic Meadow", "start": "4:02am", "end": "5:30am" },
-    { "artist": "Culture Shock", "stage": "Basspod", "start": "3:30am", "end": "4:30am" },
-    { "artist": "Cyclops", "stage": "Basspod", "start": "4:30am", "end": "5:30am" },
-    { "artist": "Eli Brown", "stage": "Neon Garden", "start": "4:00am", "end": "5:30am" },
-    { "artist": "Darren Porter", "stage": "Quantum Valley", "start": "4:00am", "end": "5:30am" },
-    { "artist": "Toman", "stage": "Stereobloom", "start": "4:30am", "end": "5:30am" },
-    { "artist": "Dyen", "stage": "Wasteland", "start": "3:30am", "end": "4:30am" },
-    { "artist": "Stan Christ", "stage": "Wasteland", "start": "4:30am", "end": "5:30am" },
-    { "artist": "Avalon Emerson", "stage": "Bionic Jungle", "start": "4:00am", "end": "5:30am" }
-  ],
-  "day_2": [
-    { "artist": "AR/CO", "stage": "Kinetic Field", "start": "7:00pm", "end": "8:00pm" },
-    { "artist": "DJ Mandy", "stage": "Circuit Grounds", "start": "7:00pm", "end": "8:00pm" },
-    { "artist": "Frost Children", "stage": "Cosmic Meadow", "start": "7:00pm", "end": "8:15pm" },
-    { "artist": "Fallen With", "stage": "Basspod", "start": "7:00pm", "end": "7:50pm" },
-    { "artist": "Mink", "stage": "Neon Garden", "start": "7:00pm", "end": "8:30pm" },
-    { "artist": "Maria Healy", "stage": "Quantum Valley", "start": "7:00pm", "end": "8:30pm" },
-    { "artist": "Slugg", "stage": "Stereobloom", "start": "7:00pm", "end": "8:00pm" },
-    { "artist": "Cutdwn", "stage": "Wasteland", "start": "7:00pm", "end": "8:30pm" },
-    { "artist": "Player Dave", "stage": "Bionic Jungle", "start": "7:00pm", "end": "8:00pm" },
-    { "artist": "Hayla", "stage": "Kinetic Field", "start": "8:00pm", "end": "9:00pm" },
-    { "artist": "Roz", "stage": "Circuit Grounds", "start": "8:00pm", "end": "9:15pm" },
-    { "artist": "Hannah Laing", "stage": "Cosmic Meadow", "start": "8:15pm", "end": "9:25pm" },
-    { "artist": "Avello B2B", "stage": "Basspod", "start": "7:50pm", "end": "8:40pm" },
-    { "artist": "Dreya V", "stage": "Stereobloom", "start": "8:00pm", "end": "9:00pm" },
-    { "artist": "Dead X", "stage": "Wasteland", "start": "8:30pm", "end": "9:30pm" },
-    { "artist": "Spray", "stage": "Bionic Jungle", "start": "8:00pm", "end": "9:00pm" },
-    { "artist": "Sub Focus", "stage": "Kinetic Field", "start": "9:00pm", "end": "10:00pm" },
-    { "artist": "Kettama", "stage": "Circuit Grounds", "start": "9:15pm", "end": "10:45pm" },
-    { "artist": "Snow", "stage": "Cosmic Meadow", "start": "9:25pm", "end": "10:15pm" },
-    { "artist": "Viperactive", "stage": "Basspod", "start": "8:40pm", "end": "9:30pm" },
-    { "artist": "Silvie Loto", "stage": "Neon Garden", "start": "8:30pm", "end": "10:00pm" },
-    { "artist": "Superstrings", "stage": "Quantum Valley", "start": "8:30pm", "end": "9:30pm" },
-    { "artist": "Discip", "stage": "Stereobloom", "start": "9:00pm", "end": "10:00pm" },
-    { "artist": "The Saints", "stage": "Wasteland", "start": "9:30pm", "end": "10:30pm" },
-    { "artist": "Bashkka B2B Sedef Adasi", "stage": "Bionic Jungle", "start": "9:00pm", "end": "10:30pm" },
-    { "artist": "Steve Aoki", "stage": "Kinetic Field", "start": "10:07pm", "end": "11:15pm" },
-    { "artist": "VTSS", "stage": "Cosmic Meadow", "start": "10:15pm", "end": "11:30pm" },
-    { "artist": "Hybrid Minds", "stage": "Basspod", "start": "9:30pm", "end": "10:30pm" },
-    { "artist": "Ahmed Spins", "stage": "Neon Garden", "start": "10:00pm", "end": "11:30pm" },
-    { "artist": "Billy Gillies", "stage": "Quantum Valley", "start": "9:30pm", "end": "10:30pm" },
-    { "artist": "Paul Oakenfold", "stage": "Quantum Valley", "start": "10:30pm", "end": "11:30pm" },
-    { "artist": "Omnom", "stage": "Stereobloom", "start": "10:00pm", "end": "11:15pm" },
-    { "artist": "Rob Gee B2B Lenny Dee", "stage": "Wasteland", "start": "10:30pm", "end": "11:30pm" },
-    { "artist": "Haai B2B Luke Alessi", "stage": "Bionic Jungle", "start": "10:30pm", "end": "12:00am" },
-    { "artist": "Hardwell", "stage": "Kinetic Field", "start": "11:19pm", "end": "12:29am" },
-    { "artist": "Sammy Virji", "stage": "Circuit Grounds", "start": "10:45pm", "end": "12:15am" },
-    { "artist": "The Prodigy", "stage": "Cosmic Meadow", "start": "11:35pm", "end": "12:35am" },
-    { "artist": "YDG", "stage": "Basspod", "start": "10:30pm", "end": "11:30pm" },
-    { "artist": "Delta Heavy", "stage": "Basspod", "start": "11:30pm", "end": "12:30am" },
-    { "artist": "Luciano", "stage": "Neon Garden", "start": "11:30pm", "end": "1:00am" },
-    { "artist": "Andrew Rayel", "stage": "Quantum Valley", "start": "11:30pm", "end": "12:30am" },
-    { "artist": "Noizu", "stage": "Stereobloom", "start": "11:15pm", "end": "12:30am" },
-    { "artist": "Lady Faith B2B LNY TNZ", "stage": "Wasteland", "start": "11:30pm", "end": "12:30am" },
-    { "artist": "MCR-T", "stage": "Bionic Jungle", "start": "12:00am", "end": "1:15am" },
-    { "artist": "John Summit", "stage": "Kinetic Field", "start": "12:32am", "end": "1:42am" },
-    { "artist": "Tiësto", "stage": "Circuit Grounds", "start": "12:15am", "end": "1:45am" },
-    { "artist": "Bunt.", "stage": "Cosmic Meadow", "start": "12:40am", "end": "2:10am" },
-    { "artist": "Getter", "stage": "Basspod", "start": "12:30am", "end": "1:30am" },
-    { "artist": "Maddix", "stage": "Quantum Valley", "start": "12:30am", "end": "1:30am" },
-    { "artist": "Wax Motif", "stage": "Stereobloom", "start": "12:30am", "end": "1:45am" },
-    { "artist": "Code Black B2B", "stage": "Wasteland", "start": "12:30am", "end": "1:30am" },
-    { "artist": "Bad Boombox B2B Ollie", "stage": "Bionic Jungle", "start": "1:15am", "end": "2:30am" },
-    { "artist": "Subtronics", "stage": "Kinetic Field", "start": "1:47am", "end": "2:57am" },
-    { "artist": "Peggy Gou B2B Ki/Ki", "stage": "Circuit Grounds", "start": "1:45am", "end": "3:15am" },
-    { "artist": "Interplanetary Criminal", "stage": "Cosmic Meadow", "start": "2:10am", "end": "3:30am" },
-    { "artist": "Eptic B2B Space Laces", "stage": "Basspod", "start": "1:30am", "end": "2:30am" },
-    { "artist": "Prospa", "stage": "Neon Garden", "start": "1:30am", "end": "3:30am" },
-    { "artist": "Mathame", "stage": "Quantum Valley", "start": "1:30am", "end": "2:30am" },
-    { "artist": "CID", "stage": "Stereobloom", "start": "1:45am", "end": "3:00am" },
-    { "artist": "Da Tweekaz", "stage": "Wasteland", "start": "1:30am", "end": "2:30am" },
-    { "artist": "Benwal", "stage": "Bionic Jungle", "start": "2:30am", "end": "3:30am" },
-    { "artist": "Kaskade", "stage": "Kinetic Field", "start": "3:01am", "end": "4:11am" },
-    { "artist": "Boys Noize", "stage": "Circuit Grounds", "start": "3:15am", "end": "4:30am" },
-    { "artist": "Malugi", "stage": "Cosmic Meadow", "start": "3:30am", "end": "4:30am" },
-    { "artist": "Doctor P B2B Flux Pavilion", "stage": "Basspod", "start": "2:30am", "end": "3:30am" },
-    { "artist": "Hol!", "stage": "Basspod", "start": "3:30am", "end": "4:30am" },
-    { "artist": "Astrix", "stage": "Quantum Valley", "start": "2:30am", "end": "3:30am" },
-    { "artist": "T78", "stage": "Quantum Valley", "start": "3:30am", "end": "4:30am" },
-    { "artist": "HNTR", "stage": "Stereobloom", "start": "3:00am", "end": "4:15am" },
-    { "artist": "Lil Texas", "stage": "Wasteland", "start": "2:30am", "end": "3:30am" },
-    { "artist": "Mish", "stage": "Wasteland", "start": "3:30am", "end": "4:30am" },
-    { "artist": "Baugruppe90", "stage": "Bionic Jungle", "start": "3:30am", "end": "4:30am" },
-    { "artist": "Above & Beyond", "stage": "Kinetic Field", "start": "4:14am", "end": "5:29am" },
-    { "artist": "Lilly Palmer", "stage": "Circuit Grounds", "start": "4:30am", "end": "5:30am" },
-    { "artist": "DJ Gigola B2B MCR-T", "stage": "Cosmic Meadow", "start": "4:30am", "end": "5:30am" },
-    { "artist": "Mary Droppinz", "stage": "Basspod", "start": "4:30am", "end": "5:30am" },
-    { "artist": "Josh Baker B2B Kettama", "stage": "Neon Garden", "start": "3:30am", "end": "5:30am" },
-    { "artist": "Thomas Schumacher", "stage": "Quantum Valley", "start": "4:30am", "end": "5:30am" },
-    { "artist": "Bolo", "stage": "Stereobloom", "start": "4:15am", "end": "5:30am" },
-    { "artist": "Alyssa Jolee", "stage": "Wasteland", "start": "4:30am", "end": "5:30am" },
-    { "artist": "Club Angel", "stage": "Bionic Jungle", "start": "4:30am", "end": "5:30am" }
-  ],
-  "day_3": [
-    { "artist": "Trace", "stage": "Kinetic Field", "start": "7:00pm", "end": "8:00pm" },
-    { "artist": "Linska", "stage": "Circuit Grounds", "start": "7:00pm", "end": "8:30pm" },
-    { "artist": "Gravagerz", "stage": "Cosmic Meadow", "start": "7:00pm", "end": "8:00pm" },
-    { "artist": "Nightstalker", "stage": "Basspod", "start": "7:00pm", "end": "7:50pm" },
-    { "artist": "Bad Beat", "stage": "Neon Garden", "start": "7:00pm", "end": "8:15pm" },
-    { "artist": "Warung", "stage": "Quantum Valley", "start": "7:00pm", "end": "8:00pm" },
-    { "artist": "KLO", "stage": "Stereobloom", "start": "7:00pm", "end": "8:00pm" },
-    { "artist": "Sihk", "stage": "Wasteland", "start": "7:00pm", "end": "8:30pm" },
-    { "artist": "Alves", "stage": "Bionic Jungle", "start": "7:00pm", "end": "8:30pm" },
-    { "artist": "Ship Wrek", "stage": "Kinetic Field", "start": "8:00pm", "end": "9:00pm" },
-    { "artist": "Nostalgix", "stage": "Cosmic Meadow", "start": "8:00pm", "end": "9:00pm" },
-    { "artist": "Sippy", "stage": "Basspod", "start": "7:50pm", "end": "8:40pm" },
-    { "artist": "Frankie Bones", "stage": "Neon Garden", "start": "8:15pm", "end": "9:30pm" },
-    { "artist": "Shingo Nakamura", "stage": "Quantum Valley", "start": "8:00pm", "end": "9:00pm" },
-    { "artist": "Murphy's Law", "stage": "Stereobloom", "start": "8:00pm", "end": "9:15pm" },
-    { "artist": "Clawz", "stage": "Wasteland", "start": "8:30pm", "end": "9:30pm" },
-    { "artist": "Isabella", "stage": "Bionic Jungle", "start": "8:30pm", "end": "10:30pm" },
-    { "artist": "Layton Giordani", "stage": "Kinetic Field", "start": "9:00pm", "end": "10:00pm" },
-    { "artist": "Anna", "stage": "Circuit Grounds", "start": "8:30pm", "end": "10:00pm" },
-    { "artist": "William Black", "stage": "Cosmic Meadow", "start": "9:00pm", "end": "10:00pm" },
-    { "artist": "Eazybaked", "stage": "Basspod", "start": "8:40pm", "end": "9:30pm" },
-    { "artist": "Adiel", "stage": "Neon Garden", "start": "9:30pm", "end": "10:50pm" },
-    { "artist": "Rebuke", "stage": "Quantum Valley", "start": "9:00pm", "end": "10:00pm" },
-    { "artist": "Sidney Charles B2B", "stage": "Stereobloom", "start": "9:15pm", "end": "10:30pm" },
-    { "artist": "The Purge", "stage": "Wasteland", "start": "9:30pm", "end": "10:30pm" },
-    { "artist": "Funk Tribu", "stage": "Kinetic Field", "start": "10:07pm", "end": "11:15pm" },
-    { "artist": "Beltran", "stage": "Circuit Grounds", "start": "10:00pm", "end": "11:30pm" },
-    { "artist": "San Holo", "stage": "Cosmic Meadow", "start": "10:00pm", "end": "11:00pm" },
-    { "artist": "Infekt B2B Samplifire", "stage": "Basspod", "start": "9:30pm", "end": "10:30pm" },
-    { "artist": "Cristoph", "stage": "Quantum Valley", "start": "10:00pm", "end": "11:00pm" },
-    { "artist": "Skream", "stage": "Stereobloom", "start": "10:30pm", "end": "11:45pm" },
-    { "artist": "Yosuf", "stage": "Wasteland", "start": "10:30pm", "end": "11:30pm" },
-    { "artist": "Kinahau", "stage": "Bionic Jungle", "start": "10:30pm", "end": "12:00am" },
-    { "artist": "Griz B2B Wooli", "stage": "Kinetic Field", "start": "11:19pm", "end": "12:29am" },
-    { "artist": "Chris Stussy", "stage": "Circuit Grounds", "start": "11:30pm", "end": "1:00am" },
-    { "artist": "Dabin", "stage": "Cosmic Meadow", "start": "11:00pm", "end": "12:05am" },
-    { "artist": "A.M.C", "stage": "Basspod", "start": "10:30pm", "end": "11:30pm" },
-    { "artist": "Virtual Riot", "stage": "Basspod", "start": "11:30pm", "end": "12:30am" },
-    { "artist": "DJ Gigola", "stage": "Neon Garden", "start": "10:50pm", "end": "12:10am" },
-    { "artist": "Eli & Fur", "stage": "Quantum Valley", "start": "11:00pm", "end": "12:00am" },
-    { "artist": "Hamdi", "stage": "Stereobloom", "start": "11:45pm", "end": "1:00am" },
-    { "artist": "DJ Isaac", "stage": "Wasteland", "start": "11:30pm", "end": "12:30am" },
-    { "artist": "Tiga", "stage": "Bionic Jungle", "start": "12:00am", "end": "1:30am" },
-    { "artist": "Zedd", "stage": "Kinetic Field", "start": "12:32am", "end": "1:42am" },
-    { "artist": "Solomun", "stage": "Circuit Grounds", "start": "1:00am", "end": "2:30am" },
-    { "artist": "Alison Wonderland", "stage": "Cosmic Meadow", "start": "12:05am", "end": "1:05am" },
-    { "artist": "Peekaboo", "stage": "Basspod", "start": "12:30am", "end": "1:30am" },
-    { "artist": "999999999", "stage": "Neon Garden", "start": "12:10am", "end": "1:30am" },
-    { "artist": "Tinlicker", "stage": "Quantum Valley", "start": "12:00am", "end": "1:00am" },
-    { "artist": "Vieze Asbak", "stage": "Wasteland", "start": "12:30am", "end": "1:30am" },
-    { "artist": "Martin Garrix", "stage": "Kinetic Field", "start": "1:47am", "end": "2:57am" },
-    { "artist": "Vintage Culture", "stage": "Circuit Grounds", "start": "2:30am", "end": "4:00am" },
-    { "artist": "Seven Lions", "stage": "Cosmic Meadow", "start": "1:05am", "end": "2:20am" },
-    { "artist": "Ahee B2B Liquid", "stage": "Basspod", "start": "1:30am", "end": "2:30am" },
-    { "artist": "Indira Paganotto", "stage": "Neon Garden", "start": "1:30am", "end": "2:50am" },
-    { "artist": "Cassian", "stage": "Quantum Valley", "start": "1:00am", "end": "2:15am" },
-    { "artist": "Chris Lorenzo B2B", "stage": "Stereobloom", "start": "1:00am", "end": "2:15am" },
-    { "artist": "Sub Zero Project", "stage": "Wasteland", "start": "1:30am", "end": "2:30am" },
-    { "artist": "DJ Tennis B2B Red Axes", "stage": "Bionic Jungle", "start": "1:30am", "end": "3:30am" },
-    { "artist": "Cloonee", "stage": "Kinetic Field", "start": "3:01am", "end": "4:11am" },
-    { "artist": "Restricted", "stage": "Cosmic Meadow", "start": "2:20am", "end": "3:20am" },
-    { "artist": "Whethan", "stage": "Basspod", "start": "2:30am", "end": "3:30am" },
-    { "artist": "Ki/Ki", "stage": "Neon Garden", "start": "2:50am", "end": "4:10am" },
-    { "artist": "Massano", "stage": "Quantum Valley", "start": "2:15am", "end": "3:30am" },
-    { "artist": "Silva Bumpa", "stage": "Stereobloom", "start": "2:15am", "end": "3:30am" },
-    { "artist": "Rooler", "stage": "Wasteland", "start": "2:30am", "end": "3:30am" },
-    { "artist": "Black Tiger Sex Machine", "stage": "Cosmic Meadow", "start": "3:20am", "end": "4:30am" },
-    { "artist": "Boogie T B2B Distinct", "stage": "Basspod", "start": "3:30am", "end": "4:30am" },
-    { "artist": "Innellea", "stage": "Quantum Valley", "start": "3:30am", "end": "4:30am" },
-    { "artist": "Morgan Seatree", "stage": "Stereobloom", "start": "3:30am", "end": "4:30am" },
-    { "artist": "Warface", "stage": "Wasteland", "start": "3:30am", "end": "4:30am" },
-    { "artist": "Armin Van Buuren", "stage": "Kinetic Field", "start": "4:14am", "end": "5:29am" },
-    { "artist": "Kevin De Vries", "stage": "Circuit Grounds", "start": "4:00am", "end": "5:30am" },
-    { "artist": "Nico Moreno B2B Holy", "stage": "Cosmic Meadow", "start": "4:30am", "end": "5:30am" },
-    { "artist": "Aeon:Mode", "stage": "Basspod", "start": "4:30am", "end": "5:30am" },
-    { "artist": "Klangkuenstler", "stage": "Neon Garden", "start": "4:10am", "end": "5:30am" },
-    { "artist": "Kream", "stage": "Quantum Valley", "start": "4:30am", "end": "5:30am" },
-    { "artist": "Lu.Re", "stage": "Stereobloom", "start": "4:30am", "end": "5:30am" },
-    { "artist": "Madgrrl B2B Vessel", "stage": "Wasteland", "start": "4:30am", "end": "5:30am" },
-    { "artist": "Beltran B2B Simas", "stage": "Bionic Jungle", "start": "3:30am", "end": "5:30am" }
+  "dates": "May 15th - May 17th",
+  "artist_count": 409,
+  "artists": [
+    {
+      "name": "$AMI G",
+      "stage": "YeeDC",
+      "day": "Day 1",
+      "time": "8:45pm - 10:15pm"
+    },
+    {
+      "name": "1991",
+      "stage": "Circuit Grounds",
+      "day": "Day 1",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "2B HAPPY",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 3",
+      "time": "4:15am - 5:30am"
+    },
+    {
+      "name": "2DY4",
+      "stage": "Beatbox Art Car",
+      "day": "Day 3",
+      "time": "12am - 1:30am"
+    },
+    {
+      "name": "999999999",
+      "stage": "Neon Garden",
+      "day": "Day 3",
+      "time": "12:10am - 1:30am"
+    },
+    {
+      "name": "99JAKES",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 1",
+      "time": "12am - 1:30am"
+    },
+    {
+      "name": "A.M.C",
+      "stage": "Basspod",
+      "day": "Day 3",
+      "time": "10:30pm - 11:30pm"
+    },
+    {
+      "name": "ABANA",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 2",
+      "time": "1am - 2:30am"
+    },
+    {
+      "name": "ABANA B2B JULIET MENDOZA",
+      "stage": "Stereobloom",
+      "day": "Day 1",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "ABOVE & BEYOND",
+      "stage": "Kinetic Field",
+      "day": "Day 2",
+      "time": "4:14am - 5:28am"
+    },
+    {
+      "name": "ADIEL",
+      "stage": "Neon Garden",
+      "day": "Day 3",
+      "time": "9:30pm - 10:50pm"
+    },
+    {
+      "name": "ADRIAN MILLS",
+      "stage": "Wasteland",
+      "day": "Day 1",
+      "time": "10:30pm - 11:30pm"
+    },
+    {
+      "name": "ADRIATIQUE",
+      "stage": "Neon Garden",
+      "day": "Day 1",
+      "time": "1am - 2:30am"
+    },
+    {
+      "name": "ADVENTURE CLUB",
+      "stage": "Basspod",
+      "day": "Day 1",
+      "time": "2:30am - 3:30am"
+    },
+    {
+      "name": "AEON:MODE",
+      "stage": "Basspod",
+      "day": "Day 3",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "AHEE B2B LIQUID STRANGER",
+      "stage": "Basspod",
+      "day": "Day 3",
+      "time": "1:30am - 2:30am"
+    },
+    {
+      "name": "AHMED SPINS",
+      "stage": "Neon Garden",
+      "day": "Day 2",
+      "time": "10pm - 11:30pm"
+    },
+    {
+      "name": "AIRGLO",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 2",
+      "time": "1am - 2:30am"
+    },
+    {
+      "name": "AJ BALL",
+      "stage": "Forest House",
+      "day": "Day 2",
+      "time": "7pm - 7:45pm"
+    },
+    {
+      "name": "AK1200",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 3",
+      "time": "1am - 2:30am"
+    },
+    {
+      "name": "ALISON WONDERLAND",
+      "stage": "Cosmic Meadow",
+      "day": "Day 3",
+      "time": "12:05am - 1:05am"
+    },
+    {
+      "name": "ALVES",
+      "stage": "Bionic Jungle",
+      "day": "Day 3",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "ALYSSA JOLEE",
+      "stage": "Wasteland",
+      "day": "Day 2",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "ANASTAZJA",
+      "stage": "Neon Garden",
+      "day": "Day 1",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "ANDREW RAYEL",
+      "stage": "Quantum Valley",
+      "day": "Day 2",
+      "time": "11:30pm - 12:30am"
+    },
+    {
+      "name": "ANDROCIDED",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 2",
+      "time": "8:15pm - 9:30pm"
+    },
+    {
+      "name": "ANNA",
+      "stage": "Circuit Grounds",
+      "day": "Day 3",
+      "time": "8:30pm - 10pm"
+    },
+    {
+      "name": "APX1",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 3",
+      "time": "2:30am - 4am"
+    },
+    {
+      "name": "AR/CO",
+      "stage": "Kinetic Field",
+      "day": "Day 2",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "ARGY",
+      "stage": "Kinetic Field",
+      "day": "Day 1",
+      "time": "9pm - 10pm"
+    },
+    {
+      "name": "ARMIN VAN BUUREN",
+      "stage": "Kinetic Field",
+      "day": "Day 3",
+      "time": "4:14am - 5:28am"
+    },
+    {
+      "name": "ARMNHMR",
+      "stage": "Beatbox Art Car",
+      "day": "Day 1",
+      "time": "12am - 1:30am"
+    },
+    {
+      "name": "ASHLEY WALLS",
+      "stage": "YeeDC",
+      "day": "Day 3",
+      "time": "1:30am - 3:15am"
+    },
+    {
+      "name": "ASSEMBLY",
+      "stage": "Forest House",
+      "day": "Day 3",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "ASTRIX",
+      "stage": "Quantum Valley",
+      "day": "Day 2",
+      "time": "2:30am - 3:30am"
+    },
+    {
+      "name": "ATLIENS",
+      "stage": "Basspod",
+      "day": "Day 1",
+      "time": "12:30am - 1:30am"
+    },
+    {
+      "name": "AVALON EMERSON",
+      "stage": "Bionic Jungle",
+      "day": "Day 1",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "AVELLO B2B DENNETT",
+      "stage": "Basspod",
+      "day": "Day 2",
+      "time": "7:50pm - 8:40pm"
+    },
+    {
+      "name": "BAD ASH",
+      "stage": "YeeDC",
+      "day": "Day 3",
+      "time": "8:45pm - 10:15pm"
+    },
+    {
+      "name": "BAD BEAT",
+      "stage": "Neon Garden",
+      "day": "Day 3",
+      "time": "7pm - 8:15pm"
+    },
+    {
+      "name": "BAD BOOMBOX B2B OLLIE LISHMAN",
+      "stage": "Bionic Jungle",
+      "day": "Day 2",
+      "time": "1:15am - 2:30am"
+    },
+    {
+      "name": "BASHKKA B2B SEDEF ADASI",
+      "stage": "Bionic Jungle",
+      "day": "Day 2",
+      "time": "9pm - 10:30pm"
+    },
+    {
+      "name": "BAUGRUPPE90",
+      "stage": "Bionic Jungle",
+      "day": "Day 2",
+      "time": "3:30am - 4:30am"
+    },
+    {
+      "name": "BELTRAN",
+      "stage": "Circuit Grounds",
+      "day": "Day 3",
+      "time": "10pm - 11:30pm"
+    },
+    {
+      "name": "BELTRAN B2B SIMAS",
+      "stage": "Bionic Jungle",
+      "day": "Day 3",
+      "time": "3:30am - 5:30am"
+    },
+    {
+      "name": "BENNI OLA",
+      "stage": "Beatbox Art Car",
+      "day": "Day 2",
+      "time": "9:30pm - 10:45pm"
+    },
+    {
+      "name": "BENWAL",
+      "stage": "Bionic Jungle",
+      "day": "Day 2",
+      "time": "2:30am - 3:30am"
+    },
+    {
+      "name": "BIG DADDY KESS",
+      "stage": "Forest House",
+      "day": "Day 1",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "BILLY GILLIES",
+      "stage": "Quantum Valley",
+      "day": "Day 2",
+      "time": "9:30pm - 10:30pm"
+    },
+    {
+      "name": "BLACK TIGER SEX MACHINE",
+      "stage": "Cosmic Meadow",
+      "day": "Day 3",
+      "time": "3:20am - 4:30am"
+    },
+    {
+      "name": "BOLO",
+      "stage": "Stereobloom",
+      "day": "Day 2",
+      "time": "4:15am - 5:30am"
+    },
+    {
+      "name": "BOOGIE T B2B DISTINCT MOTIVE",
+      "stage": "Basspod",
+      "day": "Day 3",
+      "time": "3:30am - 4:30am"
+    },
+    {
+      "name": "BOU",
+      "stage": "Circuit Grounds",
+      "day": "Day 1",
+      "time": "8pm - 9pm"
+    },
+    {
+      "name": "BOYS NOIZE",
+      "stage": "Circuit Grounds",
+      "day": "Day 2",
+      "time": "3:15am - 4:30am"
+    },
+    {
+      "name": "BROSA",
+      "stage": "Casa Bacardi",
+      "day": "Day 3",
+      "time": "10pm - 11:15pm"
+    },
+    {
+      "name": "BUNT.",
+      "stage": "Cosmic Meadow",
+      "day": "Day 2",
+      "time": "12:40am - 2:10am"
+    },
+    {
+      "name": "CANARY YELLOW",
+      "stage": "Beatbox Art Car",
+      "day": "Day 2",
+      "time": "12am - 1:30am"
+    },
+    {
+      "name": "CARDO",
+      "stage": "Casa Bacardi",
+      "day": "Day 1",
+      "time": "8pm - 9pm"
+    },
+    {
+      "name": "CARNEYVAL",
+      "stage": "YeeDC",
+      "day": "Day 2",
+      "time": "7pm - 8:45pm"
+    },
+    {
+      "name": "CASSIAN",
+      "stage": "Quantum Valley",
+      "day": "Day 3",
+      "time": "1am - 2:15am"
+    },
+    {
+      "name": "CASTOR & POLLUX",
+      "stage": "Forest House",
+      "day": "Day 1",
+      "time": "1am - 2am"
+    },
+    {
+      "name": "CC LOVE",
+      "stage": "Casa Bacardi",
+      "day": "Day 1",
+      "time": "10pm - 11:30pm"
+    },
+    {
+      "name": "CHARLES FEELGOOD",
+      "stage": "Insomniac Fridays",
+      "day": "Day 3",
+      "time": "2:45am - 4am"
+    },
+    {
+      "name": "CHARLOTTE DE WITTE",
+      "stage": "Kinetic Field",
+      "day": "Day 1",
+      "time": "4:14am - 5:28am"
+    },
+    {
+      "name": "CHASSI",
+      "stage": "Beatbox Art Car",
+      "day": "Day 3",
+      "time": "7pm - 8:15pm"
+    },
+    {
+      "name": "CHIBS",
+      "stage": "Beatbox Art Car",
+      "day": "Day 3",
+      "time": "10:45pm - 12am"
+    },
+    {
+      "name": "CHRIS LORENZO",
+      "stage": "Kinetic Field",
+      "day": "Day 1",
+      "time": "10:07pm - 11:15pm"
+    },
+    {
+      "name": "CHRIS LORENZO B2B BULLET TOOTH",
+      "stage": "Stereobloom",
+      "day": "Day 3",
+      "time": "1am - 2:15am"
+    },
+    {
+      "name": "CHRIS STUSSY",
+      "stage": "Circuit Grounds",
+      "day": "Day 3",
+      "time": "11:30pm - 1am"
+    },
+    {
+      "name": "CID",
+      "stage": "Stereobloom",
+      "day": "Day 2",
+      "time": "1:45am - 3am"
+    },
+    {
+      "name": "CLAWZ",
+      "stage": "Wasteland",
+      "day": "Day 3",
+      "time": "8:30pm - 9:30pm"
+    },
+    {
+      "name": "CLOONEE",
+      "stage": "Kinetic Field",
+      "day": "Day 3",
+      "time": "3:01am - 4:10am"
+    },
+    {
+      "name": "CLOSE FRIENDS ONLY",
+      "stage": "Casa Bacardi",
+      "day": "Day 3",
+      "time": "2:45am - 4am"
+    },
+    {
+      "name": "CLOSE FRIENDS ONLY B2B JUOS B2B ROMMII",
+      "stage": "Casa Bacardi",
+      "day": "Day 3",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "CLOUDY",
+      "stage": "Wasteland",
+      "day": "Day 1",
+      "time": "11:30pm - 12:30am"
+    },
+    {
+      "name": "CLUB ANGEL",
+      "stage": "Bionic Jungle",
+      "day": "Day 2",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "CODE BLACK B2B AUDIOFREQ B2B TONESHIFTERZ",
+      "stage": "Wasteland",
+      "day": "Day 2",
+      "time": "12:30am - 1:30am"
+    },
+    {
+      "name": "COLD BLUE",
+      "stage": "Quantum Valley",
+      "day": "Day 1",
+      "time": "9pm - 10pm"
+    },
+    {
+      "name": "CONNOR Q",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 3",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "COSMIC GATE",
+      "stage": "Quantum Valley",
+      "day": "Day 1",
+      "time": "12am - 1am"
+    },
+    {
+      "name": "CRISTOPH",
+      "stage": "Quantum Valley",
+      "day": "Day 3",
+      "time": "10pm - 11pm"
+    },
+    {
+      "name": "CRS?",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 2",
+      "time": "10pm - 11:30pm"
+    },
+    {
+      "name": "CULTURE SHOCK",
+      "stage": "Basspod",
+      "day": "Day 1",
+      "time": "3:30am - 4:30am"
+    },
+    {
+      "name": "CUTDWN",
+      "stage": "Wasteland",
+      "day": "Day 2",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "CYCLOPS",
+      "stage": "Basspod",
+      "day": "Day 1",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "DA TWEEKAZ",
+      "stage": "Wasteland",
+      "day": "Day 2",
+      "time": "1:30am - 2:30am"
+    },
+    {
+      "name": "DABIN",
+      "stage": "Cosmic Meadow",
+      "day": "Day 3",
+      "time": "11pm - 12:05am"
+    },
+    {
+      "name": "DAMON SHARPE",
+      "stage": "Forest House",
+      "day": "Day 2",
+      "time": "3am - 4am"
+    },
+    {
+      "name": "DANNY THE WILDCHILD",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 1",
+      "time": "11:30pm - 1am"
+    },
+    {
+      "name": "DARREN PORTER",
+      "stage": "Quantum Valley",
+      "day": "Day 1",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "DARUDE",
+      "stage": "Quantum Valley",
+      "day": "Day 1",
+      "time": "11pm - 12am"
+    },
+    {
+      "name": "DAZY DUKE",
+      "stage": "YeeDC",
+      "day": "Day 2",
+      "time": "10:15pm - 12am"
+    },
+    {
+      "name": "DEAD X",
+      "stage": "Wasteland",
+      "day": "Day 2",
+      "time": "8:30pm - 9:30pm"
+    },
+    {
+      "name": "DEATHPACT",
+      "stage": "Basspod",
+      "day": "Day 1",
+      "time": "11:30pm - 12:30am"
+    },
+    {
+      "name": "DELTA HEAVY",
+      "stage": "Basspod",
+      "day": "Day 2",
+      "time": "11:30pm - 12:30am"
+    },
+    {
+      "name": "DEMIGOD",
+      "stage": "Insomniac Fridays",
+      "day": "Day 1",
+      "time": "8:30pm - 9:45pm"
+    },
+    {
+      "name": "DENA",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 3",
+      "time": "10pm - 11:30pm"
+    },
+    {
+      "name": "DIP VERTIGO",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 1",
+      "time": "8:30pm - 10pm"
+    },
+    {
+      "name": "DIRTY AUDIO",
+      "stage": "YeeDC",
+      "day": "Day 1",
+      "time": "10:15pm - 12am"
+    },
+    {
+      "name": "DISCIP",
+      "stage": "Stereobloom",
+      "day": "Day 2",
+      "time": "9pm - 10pm"
+    },
+    {
+      "name": "DISCOVERY PROJECT",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 2",
+      "time": "2:30am - 4am"
+    },
+    {
+      "name": "DISKO COWBOY",
+      "stage": "YeeDC",
+      "day": "Day 3",
+      "time": "12am - 1:30am"
+    },
+    {
+      "name": "DJ EXILE",
+      "stage": "Casa Bacardi",
+      "day": "Day 1",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "DJ FLAPJACK",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 2",
+      "time": "12am - 1:30am"
+    },
+    {
+      "name": "DJ FLITE",
+      "stage": "Insomniac Fridays",
+      "day": "Day 2",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "DJ GIGOLA",
+      "stage": "Neon Garden",
+      "day": "Day 3",
+      "time": "10:50pm - 12:10am"
+    },
+    {
+      "name": "DJ GIGOLA B2B MCR-T",
+      "stage": "Cosmic Meadow",
+      "day": "Day 2",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "DJ ISAAC",
+      "stage": "Wasteland",
+      "day": "Day 3",
+      "time": "11:30pm - 12:30am"
+    },
+    {
+      "name": "DJ MANDY",
+      "stage": "Circuit Grounds",
+      "day": "Day 2",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "DJ TENNIS B2B CHLOE CAILLET",
+      "stage": "Neon Garden",
+      "day": "Day 1",
+      "time": "10pm - 11:30pm"
+    },
+    {
+      "name": "DJ TENNIS B2B RED AXES",
+      "stage": "Bionic Jungle",
+      "day": "Day 3",
+      "time": "1:30am - 3:30am"
+    },
+    {
+      "name": "DOCTOR P B2B FLUX PAVILION B2B FUNTCASE",
+      "stage": "Basspod",
+      "day": "Day 2",
+      "time": "2:30am - 3:30am"
+    },
+    {
+      "name": "DOMINA",
+      "stage": "Wasteland",
+      "day": "Day 1",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "DONALD GLAUDE",
+      "stage": "Insomniac Fridays",
+      "day": "Day 3",
+      "time": "1:30am - 2:45am"
+    },
+    {
+      "name": "DONO",
+      "stage": "Forest House",
+      "day": "Day 1",
+      "time": "9pm - 10pm"
+    },
+    {
+      "name": "DOOZIE",
+      "stage": "Casa Bacardi",
+      "day": "Day 3",
+      "time": "9pm - 10pm"
+    },
+    {
+      "name": "DRAMOS",
+      "stage": "Casa Bacardi",
+      "day": "Day 1",
+      "time": "1am - 2:30am"
+    },
+    {
+      "name": "DREYA V",
+      "stage": "Casa Bacardi",
+      "day": "Day 2",
+      "time": "11:30pm - 1am"
+    },
+    {
+      "name": "DYEN",
+      "stage": "Wasteland",
+      "day": "Day 1",
+      "time": "3:30am - 4:30am"
+    },
+    {
+      "name": "EAZYBAKED",
+      "stage": "Basspod",
+      "day": "Day 3",
+      "time": "8:40pm - 9:30pm"
+    },
+    {
+      "name": "ELI & FUR",
+      "stage": "Quantum Valley",
+      "day": "Day 3",
+      "time": "11pm - 12am"
+    },
+    {
+      "name": "ELI BROWN",
+      "stage": "Neon Garden",
+      "day": "Day 1",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "ELI FOLA",
+      "stage": "Casa Bacardi",
+      "day": "Day 2",
+      "time": "2:30am - 4am"
+    },
+    {
+      "name": "EPTIC B2B SPACE LACES",
+      "stage": "Basspod",
+      "day": "Day 2",
+      "time": "1:30am - 2:30am"
+    },
+    {
+      "name": "ERIC D-LUX",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 3",
+      "time": "11:30pm - 1am"
+    },
+    {
+      "name": "ERIC DAVENPORT",
+      "stage": "Insomniac Fridays",
+      "day": "Day 2",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "ERO808",
+      "stage": "Beatbox Art Car",
+      "day": "Day 1",
+      "time": "1:30am - 3am"
+    },
+    {
+      "name": "ESPII",
+      "stage": "Casa Bacardi",
+      "day": "Day 3",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "EVE LAUREN",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 2",
+      "time": "10pm - 11:30pm"
+    },
+    {
+      "name": "FALKO",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 2",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "FALLEN",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 3",
+      "time": "8:30pm - 10pm"
+    },
+    {
+      "name": "FALLEN WITH MC DINO",
+      "stage": "Basspod",
+      "day": "Day 2",
+      "time": "7pm - 7:50pm"
+    },
+    {
+      "name": "FESTER, OSCURE & THEE-O",
+      "stage": "Insomniac Fridays",
+      "day": "Day 2",
+      "time": "11pm - 1:30am"
+    },
+    {
+      "name": "FISHER",
+      "stage": "Kinetic Field",
+      "day": "Day 1",
+      "time": "1:47am - 2:57am"
+    },
+    {
+      "name": "FLUTTERSHY",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 2",
+      "time": "10:45pm - 12am"
+    },
+    {
+      "name": "FRANKIE BONES",
+      "stage": "Insomniac Fridays",
+      "day": "Day 3",
+      "time": "12:15am - 1:30am"
+    },
+    {
+      "name": "FROST CHILDREN",
+      "stage": "Cosmic Meadow",
+      "day": "Day 2",
+      "time": "7pm - 8:15pm"
+    },
+    {
+      "name": "FUNK TRIBU",
+      "stage": "Kinetic Field",
+      "day": "Day 3",
+      "time": "10:07pm - 11:15pm"
+    },
+    {
+      "name": "FURY",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 2",
+      "time": "11:30pm - 1am"
+    },
+    {
+      "name": "GARETH EMERY",
+      "stage": "Quantum Valley",
+      "day": "Day 1",
+      "time": "1am - 2am"
+    },
+    {
+      "name": "GETTER",
+      "stage": "Basspod",
+      "day": "Day 2",
+      "time": "12:30am - 1:30am"
+    },
+    {
+      "name": "GHENGAR",
+      "stage": "Basspod",
+      "day": "Day 1",
+      "time": "10:30pm - 11:30pm"
+    },
+    {
+      "name": "GL00M13",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 1",
+      "time": "7pm - 8:15pm"
+    },
+    {
+      "name": "GOLD LEMONADE",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 1",
+      "time": "1am - 2:30am"
+    },
+    {
+      "name": "GORILLAT",
+      "stage": "Basspod",
+      "day": "Day 1",
+      "time": "9:30pm - 10:30pm"
+    },
+    {
+      "name": "GOSHFATHER",
+      "stage": "Forest House",
+      "day": "Day 3",
+      "time": "12am - 1am"
+    },
+    {
+      "name": "GRANT FISHER",
+      "stage": "YeeDC",
+      "day": "Day 1",
+      "time": "12am - 1:30am"
+    },
+    {
+      "name": "GRAVAGERZ",
+      "stage": "Cosmic Meadow",
+      "day": "Day 3",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "GRAVEDGR",
+      "stage": "Wasteland",
+      "day": "Day 1",
+      "time": "1:30am - 2:30am"
+    },
+    {
+      "name": "GRIZ B2B WOOLI",
+      "stage": "Kinetic Field",
+      "day": "Day 3",
+      "time": "11:19pm - 12:28am"
+    },
+    {
+      "name": "GUARI",
+      "stage": "Casa Bacardi",
+      "day": "Day 1",
+      "time": "2:30am - 4am"
+    },
+    {
+      "name": "GUSTA",
+      "stage": "Beatbox Art Car",
+      "day": "Day 2",
+      "time": "7pm - 8:15pm"
+    },
+    {
+      "name": "HAAI B2B LUKE ALESSI",
+      "stage": "Bionic Jungle",
+      "day": "Day 2",
+      "time": "10:30pm - 12am"
+    },
+    {
+      "name": "HAMDI",
+      "stage": "Stereobloom",
+      "day": "Day 3",
+      "time": "11:45pm - 1am"
+    },
+    {
+      "name": "HANNAH LAING",
+      "stage": "Cosmic Meadow",
+      "day": "Day 2",
+      "time": "8:15pm - 9:25pm"
+    },
+    {
+      "name": "HARDWELL",
+      "stage": "Kinetic Field",
+      "day": "Day 2",
+      "time": "11:19pm - 12:28am"
+    },
+    {
+      "name": "HARTSHORN",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 1",
+      "time": "4:15am - 5:30am"
+    },
+    {
+      "name": "HAYLA",
+      "stage": "Kinetic Field",
+      "day": "Day 2",
+      "time": "8pm - 9pm"
+    },
+    {
+      "name": "HEIDI LAWDEN B2B MASHA MAR",
+      "stage": "Bionic Jungle",
+      "day": "Day 1",
+      "time": "5pm - 7pm"
+    },
+    {
+      "name": "HEYZ",
+      "stage": "Basspod",
+      "day": "Day 1",
+      "time": "7:50pm - 8:40pm"
+    },
+    {
+      "name": "HIXXY",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 1",
+      "time": "1:30am - 3am"
+    },
+    {
+      "name": "HNTR",
+      "stage": "Stereobloom",
+      "day": "Day 2",
+      "time": "3am - 4:15am"
+    },
+    {
+      "name": "HOL!",
+      "stage": "Basspod",
+      "day": "Day 2",
+      "time": "3:30am - 4:30am"
+    },
+    {
+      "name": "HOLY PRIEST",
+      "stage": "Circuit Grounds",
+      "day": "Day 1",
+      "time": "2:35am - 3:30am"
+    },
+    {
+      "name": "HYBRID MINDS",
+      "stage": "Basspod",
+      "day": "Day 2",
+      "time": "9:30pm - 10:30pm"
+    },
+    {
+      "name": "I HATE MODELS",
+      "stage": "Circuit Grounds",
+      "day": "Day 1",
+      "time": "10pm - 11:15pm"
+    },
+    {
+      "name": "ILAN BLUESTONE",
+      "stage": "Quantum Valley",
+      "day": "Day 1",
+      "time": "2am - 3am"
+    },
+    {
+      "name": "INDIRA PAGANOTTO",
+      "stage": "Neon Garden",
+      "day": "Day 3",
+      "time": "1:30am - 2:50am"
+    },
+    {
+      "name": "INFEKT B2B SAMPLIFIRE",
+      "stage": "Basspod",
+      "day": "Day 3",
+      "time": "9:30pm - 10:30pm"
+    },
+    {
+      "name": "INNELLEA",
+      "stage": "Quantum Valley",
+      "day": "Day 3",
+      "time": "3:30am - 4:30am"
+    },
+    {
+      "name": "INSPEKTOR GADJET",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 1",
+      "time": "9:30pm - 10:45pm"
+    },
+    {
+      "name": "INTERPLANETARY CRIMINAL",
+      "stage": "Cosmic Meadow",
+      "day": "Day 2",
+      "time": "2:10am - 3:30am"
+    },
+    {
+      "name": "ISABELLA",
+      "stage": "Bionic Jungle",
+      "day": "Day 3",
+      "time": "8:30pm - 10:30pm"
+    },
+    {
+      "name": "J PATRON",
+      "stage": "Casa Bacardi",
+      "day": "Day 1",
+      "time": "9pm - 10pm"
+    },
+    {
+      "name": "JACKIE HOLLANDER",
+      "stage": "Cosmic Meadow",
+      "day": "Day 1",
+      "time": "7pm - 7:55pm"
+    },
+    {
+      "name": "JASON SPLAT",
+      "stage": "Insomniac Fridays",
+      "day": "Day 1",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "JEM",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 1",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "JFUSE",
+      "stage": "Casa Bacardi",
+      "day": "Day 1",
+      "time": "11:30pm - 1am"
+    },
+    {
+      "name": "JIMNI CRICKET",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 2",
+      "time": "1:30am - 3am"
+    },
+    {
+      "name": "JOEY G",
+      "stage": "Forest House",
+      "day": "Day 1",
+      "time": "11pm - 12am"
+    },
+    {
+      "name": "JOHANNES SCHUSTER",
+      "stage": "Wasteland",
+      "day": "Day 1",
+      "time": "9:30pm - 10:30pm"
+    },
+    {
+      "name": "JOHN PRICE",
+      "stage": "YeeDC",
+      "day": "Day 3",
+      "time": "7pm - 8:45pm"
+    },
+    {
+      "name": "JOHN SUMMIT",
+      "stage": "Kinetic Field",
+      "day": "Day 2",
+      "time": "12:32am - 1:40am"
+    },
+    {
+      "name": "JON BISHOP",
+      "stage": "Insomniac Fridays",
+      "day": "Day 2",
+      "time": "2:45am - 4am"
+    },
+    {
+      "name": "JOSEPH CAPRIATI",
+      "stage": "Neon Garden",
+      "day": "Day 1",
+      "time": "2:30am - 4am"
+    },
+    {
+      "name": "JOSH BAKER",
+      "stage": "Stereobloom",
+      "day": "Day 1",
+      "time": "12:45am - 2am"
+    },
+    {
+      "name": "JOSH BAKER B2B KETTAMA B2B PROSPA",
+      "stage": "Neon Garden",
+      "day": "Day 2",
+      "time": "3:30am - 5:30am"
+    },
+    {
+      "name": "JRUIZ",
+      "stage": "Casa Bacardi",
+      "day": "Day 1",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "JULIET MENDOZA",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 1",
+      "time": "11:30pm - 1am"
+    },
+    {
+      "name": "JUOS",
+      "stage": "Casa Bacardi",
+      "day": "Day 3",
+      "time": "11:15pm - 1:30am"
+    },
+    {
+      "name": "JUST.SHAUN",
+      "stage": "Forest House",
+      "day": "Day 3",
+      "time": "11pm - 12am"
+    },
+    {
+      "name": "JUSTIN HAWKES",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 3",
+      "time": "11:30pm - 1am"
+    },
+    {
+      "name": "JUSTUS",
+      "stage": "Forest House",
+      "day": "Day 2",
+      "time": "8:45pm - 9:45pm"
+    },
+    {
+      "name": "KAI WACHI",
+      "stage": "Basspod",
+      "day": "Day 1",
+      "time": "1:30am - 2:30am"
+    },
+    {
+      "name": "KASKADE",
+      "stage": "Kinetic Field",
+      "day": "Day 2",
+      "time": "3:01am - 4:10am"
+    },
+    {
+      "name": "KELLAND",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 1",
+      "time": "10pm - 11:30pm"
+    },
+    {
+      "name": "KENDO",
+      "stage": "Insomniac Fridays",
+      "day": "Day 3",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "KETTAMA",
+      "stage": "Circuit Grounds",
+      "day": "Day 2",
+      "time": "9:15pm - 10:45pm"
+    },
+    {
+      "name": "KEVIN DE VRIES",
+      "stage": "Circuit Grounds",
+      "day": "Day 3",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "KI/KI",
+      "stage": "Neon Garden",
+      "day": "Day 3",
+      "time": "2:50am - 4:10am"
+    },
+    {
+      "name": "KIMMYCAT",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 3",
+      "time": "8:15pm - 9:30pm"
+    },
+    {
+      "name": "KINAHAU",
+      "stage": "Bionic Jungle",
+      "day": "Day 3",
+      "time": "10:30pm - 12am"
+    },
+    {
+      "name": "KLANGKUENSTLER",
+      "stage": "Neon Garden",
+      "day": "Day 3",
+      "time": "4:10am - 5:30am"
+    },
+    {
+      "name": "KLO",
+      "stage": "Stereobloom",
+      "day": "Day 3",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "KOJI AIKEN",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 2",
+      "time": "2:30am - 4am"
+    },
+    {
+      "name": "KOROLOVA",
+      "stage": "Kinetic Field",
+      "day": "Day 1",
+      "time": "8pm - 9pm"
+    },
+    {
+      "name": "KREAM",
+      "stage": "Quantum Valley",
+      "day": "Day 3",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "KUKO",
+      "stage": "Wasteland",
+      "day": "Day 1",
+      "time": "12:30am - 1:30am"
+    },
+    {
+      "name": "KUTA",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 3",
+      "time": "12am - 1:30am"
+    },
+    {
+      "name": "KYGORE",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 1",
+      "time": "3am - 4:15am"
+    },
+    {
+      "name": "LADY FAITH B2B LNY TNZ",
+      "stage": "Wasteland",
+      "day": "Day 2",
+      "time": "11:30pm - 12:30am"
+    },
+    {
+      "name": "LADY SINCLAIR",
+      "stage": "Beatbox Art Car",
+      "day": "Day 1",
+      "time": "9:30pm - 10:45pm"
+    },
+    {
+      "name": "LAIDBACK LUKE B2B CHUCKIE",
+      "stage": "Kinetic Field",
+      "day": "Day 1",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "LAYTON GIORDANI",
+      "stage": "Kinetic Field",
+      "day": "Day 3",
+      "time": "9pm - 10pm"
+    },
+    {
+      "name": "LEVEL UP",
+      "stage": "Circuit Grounds",
+      "day": "Day 1",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "LEVITY",
+      "stage": "Circuit Grounds",
+      "day": "Day 1",
+      "time": "11:15pm - 12:25am"
+    },
+    {
+      "name": "LEXXY JAX",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 3",
+      "time": "9:30pm - 10:45pm"
+    },
+    {
+      "name": "LIL TEXAS",
+      "stage": "Wasteland",
+      "day": "Day 2",
+      "time": "2:30am - 3:30am"
+    },
+    {
+      "name": "LILLY PALMER",
+      "stage": "Circuit Grounds",
+      "day": "Day 2",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "LINNEY",
+      "stage": "Forest House",
+      "day": "Day 2",
+      "time": "7:45pm - 8:45pm"
+    },
+    {
+      "name": "LINSKA",
+      "stage": "Circuit Grounds",
+      "day": "Day 3",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "LOUIS LOVE",
+      "stage": "Insomniac Fridays",
+      "day": "Day 1",
+      "time": "9:45pm - 11pm"
+    },
+    {
+      "name": "LOVE2HATE",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 2",
+      "time": "9:30pm - 10:45pm"
+    },
+    {
+      "name": "LU.RE",
+      "stage": "Stereobloom",
+      "day": "Day 3",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "LUCIANO",
+      "stage": "Neon Garden",
+      "day": "Day 2",
+      "time": "11:30pm - 1:30am"
+    },
+    {
+      "name": "LUCKY LOU",
+      "stage": "Casa Bacardi",
+      "day": "Day 2",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "LUCKY RABBIT",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 3",
+      "time": "1:30am - 3am"
+    },
+    {
+      "name": "LUKE ALEXANDER",
+      "stage": "Casa Bacardi",
+      "day": "Day 2",
+      "time": "8:30pm - 10pm"
+    },
+    {
+      "name": "LUKE DEAN",
+      "stage": "Stereobloom",
+      "day": "Day 1",
+      "time": "11:30pm - 12:45am"
+    },
+    {
+      "name": "LUUK VAN DIJK",
+      "stage": "Stereobloom",
+      "day": "Day 1",
+      "time": "9pm - 10:15pm"
+    },
+    {
+      "name": "MACHETE",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 1",
+      "time": "10pm - 11:30pm"
+    },
+    {
+      "name": "MADDIX",
+      "stage": "Quantum Valley",
+      "day": "Day 2",
+      "time": "12:30am - 1:30am"
+    },
+    {
+      "name": "MADDS",
+      "stage": "YeeDC",
+      "day": "Day 2",
+      "time": "12am - 1:30am"
+    },
+    {
+      "name": "MADGRRL B2B VESSEL",
+      "stage": "Wasteland",
+      "day": "Day 3",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "MALUGI",
+      "stage": "Cosmic Meadow",
+      "day": "Day 2",
+      "time": "3:30am - 4:30am"
+    },
+    {
+      "name": "MARC V",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 3",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "MARIA HEALY",
+      "stage": "Quantum Valley",
+      "day": "Day 2",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "MARK E QUARK",
+      "stage": "Insomniac Fridays",
+      "day": "Day 3",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "MARK LEWIS",
+      "stage": "Insomniac Fridays",
+      "day": "Day 3",
+      "time": "9:45pm - 11pm"
+    },
+    {
+      "name": "MARS",
+      "stage": "Insomniac Fridays",
+      "day": "Day 3",
+      "time": "8:30pm - 9:45pm"
+    },
+    {
+      "name": "MARTIN GARRIX",
+      "stage": "Kinetic Field",
+      "day": "Day 3",
+      "time": "1:47am - 2:57am"
+    },
+    {
+      "name": "MARY DROPPINZ",
+      "stage": "Basspod",
+      "day": "Day 2",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "MASSANO",
+      "stage": "Quantum Valley",
+      "day": "Day 3",
+      "time": "2:15am - 3:30am"
+    },
+    {
+      "name": "MASSIMILIANO PAGLIARA",
+      "stage": "Bionic Jungle",
+      "day": "Day 1",
+      "time": "9:30pm - 11pm"
+    },
+    {
+      "name": "MATEEZY",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 2",
+      "time": "8:30pm - 10pm"
+    },
+    {
+      "name": "MATHAME",
+      "stage": "Quantum Valley",
+      "day": "Day 2",
+      "time": "1:30am - 2:30am"
+    },
+    {
+      "name": "MATT FAULK",
+      "stage": "Forest House",
+      "day": "Day 2",
+      "time": "10:45pm - 12am"
+    },
+    {
+      "name": "MATTILO",
+      "stage": "Beatbox Art Car",
+      "day": "Day 2",
+      "time": "3am - 4:15am"
+    },
+    {
+      "name": "MATTY RALPH",
+      "stage": "Quantum Valley",
+      "day": "Day 1",
+      "time": "8pm - 9pm"
+    },
+    {
+      "name": "MAX DEAN",
+      "stage": "Stereobloom",
+      "day": "Day 1",
+      "time": "2am - 3:15am"
+    },
+    {
+      "name": "MAX DEAN B2B LUKE DEAN",
+      "stage": "Cosmic Meadow",
+      "day": "Day 1",
+      "time": "5pm - 6:50pm"
+    },
+    {
+      "name": "MAX LOW",
+      "stage": "Forest House",
+      "day": "Day 1",
+      "time": "10pm - 11pm"
+    },
+    {
+      "name": "MCR-T",
+      "stage": "Bionic Jungle",
+      "day": "Day 2",
+      "time": "12am - 1:15am"
+    },
+    {
+      "name": "MEDUZA",
+      "stage": "Cosmic Meadow",
+      "day": "Day 1",
+      "time": "12:25am - 1:45am"
+    },
+    {
+      "name": "MELLINFUNK",
+      "stage": "Insomniac Fridays",
+      "day": "Day 2",
+      "time": "1:30am - 2:45am"
+    },
+    {
+      "name": "MER BEAR",
+      "stage": "Beatbox Art Car",
+      "day": "Day 1",
+      "time": "8:15pm - 9:30pm"
+    },
+    {
+      "name": "MESTIZA",
+      "stage": "Neon Garden",
+      "day": "Day 1",
+      "time": "8:30pm - 10pm"
+    },
+    {
+      "name": "MICAH MARTIN",
+      "stage": "Forest House",
+      "day": "Day 2",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "MINK",
+      "stage": "Neon Garden",
+      "day": "Day 2",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "MISH",
+      "stage": "Wasteland",
+      "day": "Day 2",
+      "time": "3:30am - 4:30am"
+    },
+    {
+      "name": "MOONPUP",
+      "stage": "Insomniac Fridays",
+      "day": "Day 1",
+      "time": "1:30am - 2:45am"
+    },
+    {
+      "name": "MORGAN SEATREE",
+      "stage": "Stereobloom",
+      "day": "Day 3",
+      "time": "3:30am - 4:30am"
+    },
+    {
+      "name": "MPH",
+      "stage": "Cosmic Meadow",
+      "day": "Day 1",
+      "time": "2:47am - 4:02am"
+    },
+    {
+      "name": "MR DEEDS",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 1",
+      "time": "1am - 2:30am"
+    },
+    {
+      "name": "MTK",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 3",
+      "time": "2:30am - 4am"
+    },
+    {
+      "name": "MUNEQUITA",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 3",
+      "time": "3am - 4:15am"
+    },
+    {
+      "name": "MURPHY'S LAW",
+      "stage": "Stereobloom",
+      "day": "Day 3",
+      "time": "8pm - 9:15pm"
+    },
+    {
+      "name": "MUZZ",
+      "stage": "Basspod",
+      "day": "Day 1",
+      "time": "8:40pm - 9:30pm"
+    },
+    {
+      "name": "N0WHERE G1RL",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 2",
+      "time": "7pm - 8:15pm"
+    },
+    {
+      "name": "NEKTER",
+      "stage": "Forest House",
+      "day": "Day 3",
+      "time": "2am - 3am"
+    },
+    {
+      "name": "NEON DELUZ",
+      "stage": "Forest House",
+      "day": "Day 3",
+      "time": "9pm - 10pm"
+    },
+    {
+      "name": "NERZ",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 3",
+      "time": "7pm - 8:15pm"
+    },
+    {
+      "name": "NICO MORENO",
+      "stage": "Circuit Grounds",
+      "day": "Day 1",
+      "time": "9pm - 10pm"
+    },
+    {
+      "name": "NICO MORENO B2B HOLY PRIEST",
+      "stage": "Cosmic Meadow",
+      "day": "Day 3",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "NIGHTSTALKER",
+      "stage": "Basspod",
+      "day": "Day 3",
+      "time": "7pm - 7:50pm"
+    },
+    {
+      "name": "NOIZU",
+      "stage": "Stereobloom",
+      "day": "Day 2",
+      "time": "11:15pm - 12:30am"
+    },
+    {
+      "name": "NOSTALGIX",
+      "stage": "Cosmic Meadow",
+      "day": "Day 3",
+      "time": "8pm - 9pm"
+    },
+    {
+      "name": "NOT NOT",
+      "stage": "Beatbox Art Car",
+      "day": "Day 1",
+      "time": "7pm - 8:15pm"
+    },
+    {
+      "name": "NOTION",
+      "stage": "Cosmic Meadow",
+      "day": "Day 1",
+      "time": "1:47am - 2:47am"
+    },
+    {
+      "name": "NXSTY",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 1",
+      "time": "2:30am - 4am"
+    },
+    {
+      "name": "OBSKUR",
+      "stage": "Stereobloom",
+      "day": "Day 1",
+      "time": "3:15am - 4:30am"
+    },
+    {
+      "name": "ODD LANGUAGE",
+      "stage": "Beatbox Art Car",
+      "day": "Day 3",
+      "time": "8:15pm - 9:30pm"
+    },
+    {
+      "name": "OFF IN LALA",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 2",
+      "time": "11:30pm - 1am"
+    },
+    {
+      "name": "OKAYVAL",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 3",
+      "time": "1am - 2:30am"
+    },
+    {
+      "name": "OMAR+",
+      "stage": "Stereobloom",
+      "day": "Day 1",
+      "time": "10:15pm - 11:30pm"
+    },
+    {
+      "name": "OMNOM",
+      "stage": "Stereobloom",
+      "day": "Day 2",
+      "time": "10pm - 11:15pm"
+    },
+    {
+      "name": "PARAMIDA",
+      "stage": "Bionic Jungle",
+      "day": "Day 1",
+      "time": "11pm - 12:30am"
+    },
+    {
+      "name": "PAUL OAKENFOLD",
+      "stage": "Quantum Valley",
+      "day": "Day 2",
+      "time": "10:30pm - 11:30pm"
+    },
+    {
+      "name": "PAUL VAN DYK",
+      "stage": "Quantum Valley",
+      "day": "Day 1",
+      "time": "3am - 4am"
+    },
+    {
+      "name": "PEEKABOO",
+      "stage": "Basspod",
+      "day": "Day 3",
+      "time": "12:30am - 1:30am"
+    },
+    {
+      "name": "PEGASSI",
+      "stage": "Quantum Valley",
+      "day": "Day 1",
+      "time": "10pm - 11pm"
+    },
+    {
+      "name": "PEGGY GOU",
+      "stage": "Neon Garden",
+      "day": "Day 1",
+      "time": "11:30pm - 1am"
+    },
+    {
+      "name": "PEGGY GOU B2B KI/KI",
+      "stage": "Circuit Grounds",
+      "day": "Day 2",
+      "time": "1:45am - 3:15am"
+    },
+    {
+      "name": "PHNX",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 2",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "PLAYER DAVE",
+      "stage": "Beatbox Art Car",
+      "day": "Day 2",
+      "time": "10:45pm - 12am"
+    },
+    {
+      "name": "PLS&TY",
+      "stage": "Forest House",
+      "day": "Day 1",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "POLAR BEARS",
+      "stage": "Forest House",
+      "day": "Day 2",
+      "time": "12am - 1am"
+    },
+    {
+      "name": "PORTER ROBINSON",
+      "stage": "Kinetic Field",
+      "day": "Day 1",
+      "time": "3:01am - 4:10am"
+    },
+    {
+      "name": "PROSPA",
+      "stage": "Neon Garden",
+      "day": "Day 2",
+      "time": "1:30am - 3:30am"
+    },
+    {
+      "name": "PUKING SPICE LATTE",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 2",
+      "time": "4:15am - 5:30am"
+    },
+    {
+      "name": "PUNKY BREWSTAR",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 1",
+      "time": "8:15pm - 9:30pm"
+    },
+    {
+      "name": "R.A.W.",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 1",
+      "time": "2:30am - 4am"
+    },
+    {
+      "name": "RAJE",
+      "stage": "Electrolit Hydration House",
+      "day": "Day 3",
+      "time": "8:30pm - 10pm"
+    },
+    {
+      "name": "RAY VOLPE",
+      "stage": "Circuit Grounds",
+      "day": "Day 1",
+      "time": "3:30am - 4:30am"
+    },
+    {
+      "name": "REBEKAH",
+      "stage": "Wasteland",
+      "day": "Day 1",
+      "time": "2:30am - 3:30am"
+    },
+    {
+      "name": "REBUKE",
+      "stage": "Quantum Valley",
+      "day": "Day 3",
+      "time": "9pm - 10pm"
+    },
+    {
+      "name": "REID SPEED",
+      "stage": "Insomniac Fridays",
+      "day": "Day 2",
+      "time": "9:45pm - 11pm"
+    },
+    {
+      "name": "RESTRICTED",
+      "stage": "Cosmic Meadow",
+      "day": "Day 3",
+      "time": "2:20am - 3:20am"
+    },
+    {
+      "name": "RIOT",
+      "stage": "Basspod",
+      "day": "Day 1",
+      "time": "7pm - 7:50pm"
+    },
+    {
+      "name": "ROADHOUSE",
+      "stage": "YeeDC",
+      "day": "Day 1",
+      "time": "1:30am - 3:15am"
+    },
+    {
+      "name": "ROB GEE B2B LENNY DEE",
+      "stage": "Wasteland",
+      "day": "Day 2",
+      "time": "10:30pm - 11:30pm"
+    },
+    {
+      "name": "ROBERT HOOD",
+      "stage": "Bionic Jungle",
+      "day": "Day 1",
+      "time": "2:30am - 4am"
+    },
+    {
+      "name": "RODDY LIMA",
+      "stage": "Cosmic Meadow",
+      "day": "Day 1",
+      "time": "7:55pm - 8:55pm"
+    },
+    {
+      "name": "ROHAAN",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 3",
+      "time": "10pm - 11:30pm"
+    },
+    {
+      "name": "ROMMII",
+      "stage": "Casa Bacardi",
+      "day": "Day 3",
+      "time": "1:30am - 2:45am"
+    },
+    {
+      "name": "RON D CORE",
+      "stage": "Insomniac Fridays",
+      "day": "Day 1",
+      "time": "12:15am - 1:30am"
+    },
+    {
+      "name": "ROOLER",
+      "stage": "Wasteland",
+      "day": "Day 3",
+      "time": "2:30am - 3:30am"
+    },
+    {
+      "name": "ROXY FERRARI",
+      "stage": "YeeDC",
+      "day": "Day 2",
+      "time": "8:45pm - 10:15pm"
+    },
+    {
+      "name": "ROZ",
+      "stage": "Circuit Grounds",
+      "day": "Day 2",
+      "time": "8pm - 9:15pm"
+    },
+    {
+      "name": "SALUTE B2B CHLOE CAILLET",
+      "stage": "Bionic Jungle",
+      "day": "Day 1",
+      "time": "12:30am - 2:30am"
+    },
+    {
+      "name": "SAMMY VIRJI",
+      "stage": "Circuit Grounds",
+      "day": "Day 2",
+      "time": "10:45pm - 12:15am"
+    },
+    {
+      "name": "SAMSON",
+      "stage": "Beatbox Art Car",
+      "day": "Day 2",
+      "time": "1:30am - 3am"
+    },
+    {
+      "name": "SAN HOLO",
+      "stage": "Cosmic Meadow",
+      "day": "Day 3",
+      "time": "10pm - 11pm"
+    },
+    {
+      "name": "SAN PACHO",
+      "stage": "Cosmic Meadow",
+      "day": "Day 1",
+      "time": "4:02am - 5:30am"
+    },
+    {
+      "name": "SARAH DE WARREN",
+      "stage": "Quantum Valley",
+      "day": "Day 1",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "SCOOBA",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 3",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "SERAFINA",
+      "stage": "Wasteland",
+      "day": "Day 1",
+      "time": "8:30pm - 9:30pm"
+    },
+    {
+      "name": "SEVEN LIONS",
+      "stage": "Cosmic Meadow",
+      "day": "Day 3",
+      "time": "1:05am - 2:20am"
+    },
+    {
+      "name": "SHINGO NAKAMURA",
+      "stage": "Quantum Valley",
+      "day": "Day 3",
+      "time": "8pm - 9pm"
+    },
+    {
+      "name": "SHIP WREK",
+      "stage": "Kinetic Field",
+      "day": "Day 3",
+      "time": "8pm - 9pm"
+    },
+    {
+      "name": "SIDNEY CHARLES B2B BUSHBABY",
+      "stage": "Stereobloom",
+      "day": "Day 3",
+      "time": "9:15pm - 10:30pm"
+    },
+    {
+      "name": "SIHK",
+      "stage": "Wasteland",
+      "day": "Day 3",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "SILVA BUMPA",
+      "stage": "Stereobloom",
+      "day": "Day 3",
+      "time": "2:15am - 3:30am"
+    },
+    {
+      "name": "SILVER PANDA",
+      "stage": "Forest House",
+      "day": "Day 3",
+      "time": "1am - 2am"
+    },
+    {
+      "name": "SILVIE LOTO",
+      "stage": "Neon Garden",
+      "day": "Day 2",
+      "time": "8:30pm - 10pm"
+    },
+    {
+      "name": "SIMON APEX & LOSTBOY TRIBUTE SET",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 3",
+      "time": "10:45pm - 12am"
+    },
+    {
+      "name": "SIPPY",
+      "stage": "Basspod",
+      "day": "Day 3",
+      "time": "7:50pm - 8:40pm"
+    },
+    {
+      "name": "SISTO",
+      "stage": "Beatbox Art Car",
+      "day": "Day 3",
+      "time": "3am - 4:15am"
+    },
+    {
+      "name": "SKANKA",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 1",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "SKIBKID",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 1",
+      "time": "10:45pm - 12am"
+    },
+    {
+      "name": "SKILAH",
+      "stage": "Casa Bacardi",
+      "day": "Day 2",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "SKREAM",
+      "stage": "Stereobloom",
+      "day": "Day 3",
+      "time": "10:30pm - 11:45pm"
+    },
+    {
+      "name": "SLAMM",
+      "stage": "Stereobloom",
+      "day": "Day 1",
+      "time": "8pm - 9pm"
+    },
+    {
+      "name": "SLIM MCGRAW",
+      "stage": "YeeDC",
+      "day": "Day 2",
+      "time": "1:30am - 3:15am"
+    },
+    {
+      "name": "SLUGG",
+      "stage": "Stereobloom",
+      "day": "Day 2",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "SNOW STRIPPERS",
+      "stage": "Cosmic Meadow",
+      "day": "Day 2",
+      "time": "9:25pm - 10:15pm"
+    },
+    {
+      "name": "SOFI TUKKER",
+      "stage": "Kinetic Field",
+      "day": "Day 1",
+      "time": "11:19pm - 12:28am"
+    },
+    {
+      "name": "SOLOMUN",
+      "stage": "Circuit Grounds",
+      "day": "Day 3",
+      "time": "1am - 2:30am"
+    },
+    {
+      "name": "SOMMER RAY",
+      "stage": "YeeDC",
+      "day": "Day 3",
+      "time": "10:15pm - 12am"
+    },
+    {
+      "name": "SORAYA",
+      "stage": "Casa Bacardi",
+      "day": "Day 3",
+      "time": "8pm - 9pm"
+    },
+    {
+      "name": "SOSO DRU",
+      "stage": "YeeDC",
+      "day": "Day 1",
+      "time": "7pm - 8:45pm"
+    },
+    {
+      "name": "SPRAY",
+      "stage": "Bionic Jungle",
+      "day": "Day 2",
+      "time": "8pm - 9pm"
+    },
+    {
+      "name": "SQISHI",
+      "stage": "Beatbox Art Car",
+      "day": "Day 3",
+      "time": "1:30am - 3am"
+    },
+    {
+      "name": "STACY CHRISTINE",
+      "stage": "Bionic Jungle",
+      "day": "Day 1",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "STAN CHRIST",
+      "stage": "Wasteland",
+      "day": "Day 1",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "STEVE AOKI",
+      "stage": "Kinetic Field",
+      "day": "Day 2",
+      "time": "10:07pm - 11:15pm"
+    },
+    {
+      "name": "STEVE LECLAIR",
+      "stage": "Insomniac Fridays",
+      "day": "Day 1",
+      "time": "2:45am - 4am"
+    },
+    {
+      "name": "STEVE LORIA",
+      "stage": "Insomniac Fridays",
+      "day": "Day 3",
+      "time": "11pm - 12:15am"
+    },
+    {
+      "name": "SUB FOCUS",
+      "stage": "Kinetic Field",
+      "day": "Day 2",
+      "time": "9pm - 10pm"
+    },
+    {
+      "name": "SUB ZERO PROJECT",
+      "stage": "Wasteland",
+      "day": "Day 3",
+      "time": "1:30am - 2:30am"
+    },
+    {
+      "name": "SUBTRONICS",
+      "stage": "Kinetic Field",
+      "day": "Day 2",
+      "time": "1:47am - 2:57am"
+    },
+    {
+      "name": "SUPERSTRINGS",
+      "stage": "Quantum Valley",
+      "day": "Day 2",
+      "time": "8:30pm - 9:30pm"
+    },
+    {
+      "name": "SUSSYBAKA",
+      "stage": "Forest House",
+      "day": "Day 1",
+      "time": "8pm - 9pm"
+    },
+    {
+      "name": "SYNNHAVEN",
+      "stage": "Forest House",
+      "day": "Day 3",
+      "time": "4am - 5:30am"
+    },
+    {
+      "name": "T78",
+      "stage": "Quantum Valley",
+      "day": "Day 2",
+      "time": "3:30am - 4:30am"
+    },
+    {
+      "name": "TAVATLI",
+      "stage": "Beatbox Art Car",
+      "day": "Day 1",
+      "time": "4:15am - 5:30am"
+    },
+    {
+      "name": "TAYLOR KADE",
+      "stage": "YeeDC",
+      "day": "Day 2",
+      "time": "3:15am - 4:15am"
+    },
+    {
+      "name": "TC",
+      "stage": "Forest House",
+      "day": "Day 1",
+      "time": "3am - 4am"
+    },
+    {
+      "name": "TENSTEPS",
+      "stage": "Forest House",
+      "day": "Day 3",
+      "time": "10pm - 11pm"
+    },
+    {
+      "name": "THE CARRY NATION",
+      "stage": "Bionic Jungle",
+      "day": "Day 1",
+      "time": "8pm - 9:30pm"
+    },
+    {
+      "name": "THE CHAINSMOKERS",
+      "stage": "Kinetic Field",
+      "day": "Day 1",
+      "time": "12:32am - 1:40am"
+    },
+    {
+      "name": "THE KANDYMAN",
+      "stage": "Insomniac Fridays",
+      "day": "Day 1",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "THE OUTLAW",
+      "stage": "Circuit Grounds",
+      "day": "Day 1",
+      "time": "1:35am - 2:35am"
+    },
+    {
+      "name": "THE PRODIGY",
+      "stage": "Cosmic Meadow",
+      "day": "Day 2",
+      "time": "11:35pm - 12:35am"
+    },
+    {
+      "name": "THE PURGE",
+      "stage": "Wasteland",
+      "day": "Day 3",
+      "time": "9:30pm - 10:30pm"
+    },
+    {
+      "name": "THE SAINTS",
+      "stage": "Wasteland",
+      "day": "Day 2",
+      "time": "9:30pm - 10:30pm"
+    },
+    {
+      "name": "THOMAS SCHUMACHER",
+      "stage": "Quantum Valley",
+      "day": "Day 2",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "TIGA",
+      "stage": "Bionic Jungle",
+      "day": "Day 3",
+      "time": "12am - 1:30am"
+    },
+    {
+      "name": "TIM CLARK",
+      "stage": "Forest House",
+      "day": "Day 3",
+      "time": "3am - 4am"
+    },
+    {
+      "name": "TINLICKER",
+      "stage": "Quantum Valley",
+      "day": "Day 3",
+      "time": "12am - 1am"
+    },
+    {
+      "name": "Tiësto",
+      "stage": "Circuit Grounds",
+      "day": "Day 2",
+      "time": "12:15am - 1:45am"
+    },
+    {
+      "name": "TOMAN",
+      "stage": "Stereobloom",
+      "day": "Day 1",
+      "time": "4:30am - 5:30am"
+    },
+    {
+      "name": "TONY CAMBOA",
+      "stage": "Insomniac Fridays",
+      "day": "Day 2",
+      "time": "8:30pm - 9:45pm"
+    },
+    {
+      "name": "TRACE",
+      "stage": "Kinetic Field",
+      "day": "Day 3",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "TROUBLE",
+      "stage": "Takis Rave Hangar",
+      "day": "Day 1",
+      "time": "7pm - 8:30pm"
+    },
+    {
+      "name": "TSU NAMI",
+      "stage": "Beatbox Art Car",
+      "day": "Day 1",
+      "time": "10:45pm - 12am"
+    },
+    {
+      "name": "UNDERWORLD",
+      "stage": "Cosmic Meadow",
+      "day": "Day 1",
+      "time": "11:10pm - 12:10am"
+    },
+    {
+      "name": "VICIOUS",
+      "stage": "Beatbox Art Car",
+      "day": "Day 3",
+      "time": "4:15am - 5:30am"
+    },
+    {
+      "name": "VIEZE ASBAK",
+      "stage": "Wasteland",
+      "day": "Day 3",
+      "time": "12:30am - 1:30am"
+    },
+    {
+      "name": "VINTAGE CULTURE",
+      "stage": "Circuit Grounds",
+      "day": "Day 3",
+      "time": "2:30am - 4am"
+    },
+    {
+      "name": "VIPERACTIVE",
+      "stage": "Basspod",
+      "day": "Day 2",
+      "time": "8:40pm - 9:30pm"
+    },
+    {
+      "name": "VIRTUAL RIOT",
+      "stage": "Basspod",
+      "day": "Day 3",
+      "time": "11:30pm - 12:30am"
+    },
+    {
+      "name": "VTSS",
+      "stage": "Cosmic Meadow",
+      "day": "Day 2",
+      "time": "10:15pm - 11:30pm"
+    },
+    {
+      "name": "VULKAUF",
+      "stage": "Picnic Playtime Art Car",
+      "day": "Day 2",
+      "time": "3am - 4:15am"
+    },
+    {
+      "name": "WALKER & ROYCE B2B VNSSA",
+      "stage": "Cosmic Meadow",
+      "day": "Day 1",
+      "time": "9:55pm - 10:55pm"
+    },
+    {
+      "name": "WARD ANDREWS",
+      "stage": "Forest House",
+      "day": "Day 3",
+      "time": "8pm - 9pm"
+    },
+    {
+      "name": "WARFACE",
+      "stage": "Wasteland",
+      "day": "Day 3",
+      "time": "3:30am - 4:30am"
+    },
+    {
+      "name": "WARUNG",
+      "stage": "Quantum Valley",
+      "day": "Day 3",
+      "time": "7pm - 8pm"
+    },
+    {
+      "name": "WAX MOTIF",
+      "stage": "Stereobloom",
+      "day": "Day 2",
+      "time": "12:30am - 1:45am"
+    },
+    {
+      "name": "WESTEND",
+      "stage": "Cosmic Meadow",
+      "day": "Day 1",
+      "time": "8:55pm - 9:55pm"
+    },
+    {
+      "name": "WHETHAN",
+      "stage": "Basspod",
+      "day": "Day 3",
+      "time": "2:30am - 3:30am"
+    },
+    {
+      "name": "WILLIAM BLACK",
+      "stage": "Cosmic Meadow",
+      "day": "Day 3",
+      "time": "9pm - 10pm"
+    },
+    {
+      "name": "WILLIE PAKE",
+      "stage": "YeeDC",
+      "day": "Day 3",
+      "time": "3:15am - 4:15am"
+    },
+    {
+      "name": "WOLFIE",
+      "stage": "Beatbox Art Car",
+      "day": "Day 3",
+      "time": "9:30pm - 10:45pm"
+    },
+    {
+      "name": "WOOLI",
+      "stage": "Circuit Grounds",
+      "day": "Day 1",
+      "time": "12:25am - 1:35am"
+    },
+    {
+      "name": "YDG",
+      "stage": "Basspod",
+      "day": "Day 2",
+      "time": "10:30pm - 11:30pm"
+    },
+    {
+      "name": "YOSUF",
+      "stage": "Wasteland",
+      "day": "Day 3",
+      "time": "10:30pm - 11:30pm"
+    },
+    {
+      "name": "ZAANEE",
+      "stage": "Forest House",
+      "day": "Day 1",
+      "time": "2am - 3am"
+    },
+    {
+      "name": "ZEDD",
+      "stage": "Kinetic Field",
+      "day": "Day 3",
+      "time": "12:32am - 1:40am"
+    }
   ]
 }
