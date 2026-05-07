@@ -3,17 +3,12 @@ import { v } from "convex/values";
 
 type DayKey = "day_1" | "day_2" | "day_3";
 
-interface RawArtist {
-  artist: string;
+interface NormalizedArtist {
+  name: string;
   stage: string;
+  day: DayKey;
   start: string;
   end: string;
-}
-
-interface FestivalJson {
-  day_1: RawArtist[];
-  day_2: RawArtist[];
-  day_3: RawArtist[];
 }
 
 const DAY_ANCHORS: Record<DayKey, { y: number; m: number; d: number }> = {
@@ -28,10 +23,14 @@ function parseTimeToMs(
   time: string,
   dayKey: DayKey,
 ): { ms: number; pastMidnight: boolean } {
-  const m = time.trim().match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
+  // Accept "8:45pm" and "7pm" (minutes optional).
+  const m = time
+    .trim()
+    .replace(/\s+/g, " ")
+    .match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
   if (!m) throw new Error(`Bad time: ${time}`);
   let hour = parseInt(m[1], 10);
-  const minute = parseInt(m[2], 10);
+  const minute = m[2] ? parseInt(m[2], 10) : 0;
   const ampm = m[3].toLowerCase();
   if (ampm === "pm" && hour !== 12) hour += 12;
   if (ampm === "am" && hour === 12) hour = 0;
@@ -50,21 +49,75 @@ function parseTimeToMs(
   return { ms, pastMidnight };
 }
 
-function buildArtistRow(raw: RawArtist, dayKey: DayKey) {
-  const start = parseTimeToMs(raw.start, dayKey);
-  const end = parseTimeToMs(raw.end, dayKey);
+function buildArtistRow(raw: NormalizedArtist) {
+  const start = parseTimeToMs(raw.start, raw.day);
+  const end = parseTimeToMs(raw.end, raw.day);
   let endMs = end.ms;
   if (endMs <= start.ms) {
     endMs += 24 * 60 * 60 * 1000;
   }
   return {
-    name: raw.artist,
+    name: raw.name,
     stage: raw.stage,
-    day: dayKey,
+    day: raw.day,
     startMs: start.ms,
     endMs,
     crossesMidnight: !start.pastMidnight && end.pastMidnight,
   };
+}
+
+// "Day 1" / "day_1" / "1" → "day_1"
+function coerceDayKey(input: unknown): DayKey | null {
+  if (typeof input !== "string" && typeof input !== "number") return null;
+  const s = String(input).trim().toLowerCase().replace(/\s+/g, "_");
+  if (s === "day_1" || s === "day_2" || s === "day_3") return s;
+  if (s === "1") return "day_1";
+  if (s === "2") return "day_2";
+  if (s === "3") return "day_3";
+  return null;
+}
+
+function splitTimeRange(time: unknown): { start: string; end: string } | null {
+  if (typeof time !== "string") return null;
+  const parts = time.split(/\s*[–-]\s*/);
+  if (parts.length !== 2) return null;
+  const [start, end] = parts.map((p) => p.trim());
+  if (!start || !end) return null;
+  return { start, end };
+}
+
+function normalizeFestivalData(data: unknown): NormalizedArtist[] {
+  const out: NormalizedArtist[] = [];
+  if (!data || typeof data !== "object") return out;
+  const obj = data as Record<string, unknown>;
+
+  // New shape: { artists: [{ name, stage, day: "Day 1", time: "8:45pm - 10:15pm" }] }
+  if (Array.isArray(obj.artists)) {
+    for (const raw of obj.artists as Array<Record<string, unknown>>) {
+      const day = coerceDayKey(raw.day);
+      const range = splitTimeRange(raw.time);
+      const name = typeof raw.name === "string" ? raw.name : null;
+      const stage = typeof raw.stage === "string" ? raw.stage : null;
+      if (!day || !range || !name || !stage) continue;
+      out.push({ name, stage, day, start: range.start, end: range.end });
+    }
+    return out;
+  }
+
+  // Legacy shape: { day_1: [{ artist, stage, start, end }], day_2: [...], day_3: [...] }
+  for (const day of ["day_1", "day_2", "day_3"] as const) {
+    const list = obj[day];
+    if (!Array.isArray(list)) continue;
+    for (const raw of list as Array<Record<string, unknown>>) {
+      const name = typeof raw.artist === "string" ? raw.artist : null;
+      const stage = typeof raw.stage === "string" ? raw.stage : null;
+      const start = typeof raw.start === "string" ? raw.start : null;
+      const end = typeof raw.end === "string" ? raw.end : null;
+      if (!name || !stage || !start || !end) continue;
+      out.push({ name, stage, day, start, end });
+    }
+  }
+  return out;
 }
 
 export const seedFestival = mutation({
@@ -72,19 +125,22 @@ export const seedFestival = mutation({
     data: v.any(),
   },
   handler: async (ctx, { data }) => {
-    const json = data as FestivalJson;
+    const normalized = normalizeFestivalData(data);
+    if (normalized.length === 0) {
+      throw new Error(
+        "seedFestival: no artists could be parsed from the provided JSON. " +
+          "Expected either { artists: [...] } or { day_1: [...], ... }.",
+      );
+    }
+
     const existing = await ctx.db.query("artists").collect();
     for (const a of existing) await ctx.db.delete(a._id);
 
     let count = 0;
-    for (const day of ["day_1", "day_2", "day_3"] as const) {
-      const list = json[day];
-      if (!Array.isArray(list)) continue;
-      for (const raw of list) {
-        const row = buildArtistRow(raw, day);
-        await ctx.db.insert("artists", row);
-        count += 1;
-      }
+    for (const raw of normalized) {
+      const row = buildArtistRow(raw);
+      await ctx.db.insert("artists", row);
+      count += 1;
     }
     return { inserted: count };
   },
