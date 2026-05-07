@@ -4,6 +4,14 @@ import { useMutation } from "convex/react";
 import { CloudOff, HelpCircle, Loader2, Sparkles, Users } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ColorPicker } from "@/components/ColorPicker";
@@ -12,6 +20,7 @@ import { MemberDot } from "@/components/MemberDot";
 import {
   OnboardingTour,
   hasSeenTour,
+  restartTour,
 } from "@/components/onboarding/OnboardingTour";
 import { MEMBER_PALETTE, nextAvailableColor } from "@/lib/colors";
 import { useCachedQuery } from "@/lib/useCachedQuery";
@@ -30,6 +39,7 @@ export default function Onboarding() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
 
   useEffect(() => {
     if (session.status !== "anonymous") return;
@@ -56,12 +66,11 @@ export default function Onboarding() {
   }, [members, memberColor, takenByMember]);
 
   const trimmedName = name.trim();
+  const trimmedNameLower = trimmedName.toLowerCase();
   const memberByName = useMemo(() => {
-    if (!members || !trimmedName) return undefined;
-    return members.find(
-      (m) => m.name.toLowerCase() === trimmedName.toLowerCase(),
-    );
-  }, [members, trimmedName]);
+    if (!members || !trimmedNameLower) return undefined;
+    return members.find((m) => m.nameLower === trimmedNameLower);
+  }, [members, trimmedNameLower]);
 
   if (session.status === "loading") {
     return (
@@ -79,12 +88,25 @@ export default function Onboarding() {
     !offline &&
     !!trimmedName &&
     trimmedName.length <= 32 &&
-    !memberByName &&
-    !!memberColor;
+    (!!memberByName || !!memberColor);
+
+  function signInAsExisting() {
+    if (!memberByName) return;
+    writeStored({
+      memberId: memberByName._id,
+      memberName: memberByName.name,
+    });
+    setSignInOpen(false);
+    navigate("/schedule", { replace: true });
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
+    if (memberByName) {
+      setSignInOpen(true);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -97,7 +119,7 @@ export default function Onboarding() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong";
       if (message.includes("NAME_TAKEN")) {
-        setError("That name is already taken. Try another.");
+        setSignInOpen(true);
       } else if (message.includes("COLOR_TAKEN")) {
         setError("That color was just taken. Pick a different one.");
       } else {
@@ -126,15 +148,18 @@ export default function Onboarding() {
             Coordinate your festival
           </h1>
           <p className="text-sm text-muted-foreground sm:text-base">
-            Pick your name to join. You'll be able to copy another person's
-            picks once you're in.
+            Pick your name to join, then start mapping out your weekend with
+            friends.
           </p>
           <Button
             type="button"
             variant="ghost"
             size="sm"
             className="text-xs text-muted-foreground"
-            onClick={() => setTourOpen(true)}
+            onClick={() => {
+              restartTour();
+              setTourOpen(true);
+            }}
           >
             <HelpCircle className="size-3.5" />
             How does this work?
@@ -186,22 +211,25 @@ export default function Onboarding() {
               disabled={offline}
             />
             {memberByName && (
-              <p className="mt-1.5 text-xs text-amber-400">
-                &ldquo;{memberByName.name}&rdquo; is already in use. Pick another name.
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                &ldquo;{memberByName.name}&rdquo; already exists — continue to
+                sign in as them.
               </p>
             )}
           </div>
-          <div>
-            <Label className="mb-1.5 inline-block">Your color</Label>
-            <ColorPicker
-              value={memberColor}
-              onChange={setMemberColor}
-              palette={MEMBER_PALETTE}
-              takenBy={takenByMember}
-              disabled={offline}
-              disabledReason="Offline — reconnect to join"
-            />
-          </div>
+          {!memberByName && (
+            <div>
+              <Label className="mb-1.5 inline-block">Your color</Label>
+              <ColorPicker
+                value={memberColor}
+                onChange={setMemberColor}
+                palette={MEMBER_PALETTE}
+                takenBy={takenByMember}
+                disabled={offline}
+                disabledReason="Offline — reconnect to join"
+              />
+            </div>
+          )}
 
           {offline && (
             <div className="flex items-start gap-2 rounded-md bg-amber-500/15 px-3 py-2 text-sm text-amber-200 ring-1 ring-amber-500/30">
@@ -230,6 +258,8 @@ export default function Onboarding() {
               <>
                 <Loader2 className="size-4 animate-spin" /> Setting up…
               </>
+            ) : memberByName ? (
+              "Sign in"
             ) : (
               "Join"
             )}
@@ -237,6 +267,36 @@ export default function Onboarding() {
         </form>
       </div>
       <OnboardingTour open={tourOpen} onClose={() => setTourOpen(false)} />
+      <Dialog
+        open={signInOpen}
+        onOpenChange={(open) => {
+          if (!submitting) setSignInOpen(open);
+        }}
+      >
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-sm gap-3 p-5 sm:p-6">
+          <DialogHeader className="space-y-2">
+            <DialogTitle>
+              {memberByName?.name ?? trimmedName} already exists
+            </DialogTitle>
+            <DialogDescription>
+              Continue to sign in as &ldquo;
+              {memberByName?.name ?? trimmedName}&rdquo;?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 pt-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setSignInOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="button" onClick={signInAsExisting}>
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

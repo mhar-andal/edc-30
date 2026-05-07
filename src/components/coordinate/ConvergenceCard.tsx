@@ -1,8 +1,13 @@
+import { useMemo } from "react";
 import { ArrowRight } from "lucide-react";
 import { MemberChip } from "@/components/MemberChip";
-import { MeetupSpotPicker } from "./MeetupSpotPicker";
+import {
+  MeetupSpotPicker,
+  type MeetTimeContext,
+} from "./MeetupSpotPicker";
 import { formatRange, formatTime, type DayKey } from "@/lib/time";
 import { getStagePalette } from "@/lib/colors";
+import { cn } from "@/lib/utils";
 import type { Id, Doc } from "../../../convex/_generated/dataModel";
 import type { Convergence } from "@/lib/coordinate";
 
@@ -13,6 +18,8 @@ interface Props {
   meetupsByKey: Map<string, Doc<"meetups">>;
   myMemberId: Id<"members"> | null;
   meetupKey: string;
+  /** When true, the card pulses with a primary-colored ring to draw the eye. */
+  highlighted?: boolean;
 }
 
 const OUTSIDE_LABEL = "Start of day";
@@ -24,6 +31,7 @@ export function ConvergenceCard({
   meetupsByKey,
   myMemberId,
   meetupKey,
+  highlighted,
 }: Props) {
   const existing = meetupsByKey.get(meetupKey);
   const toArtist = conv.destinationArtist;
@@ -34,13 +42,64 @@ export function ConvergenceCard({
   // visual order has some temporal sense to it.
   const groups = groupMembersByOrigin(conv, membersById);
 
+  // Reference info for the meet-time dialog: each distinct origin set
+  // (with its end time) and the destination set (with its start time),
+  // so the user has the relevant timing context while picking a time.
+  const timeContext = useMemo<MeetTimeContext>(() => {
+    const byArtist = new Map<
+      string,
+      MeetTimeContext["origins"][number]
+    >();
+    for (const [memberId, buffer] of conv.byMember) {
+      const member = membersById.get(memberId);
+      if (!member) continue;
+      const origin = buffer.fromArtist;
+      if (!origin) continue;
+      const existing = byArtist.get(origin._id);
+      const memberEntry = {
+        id: member._id,
+        name: member.name,
+        color: member.color,
+        isYou: member._id === myMemberId,
+      };
+      if (existing) {
+        if (!existing.members.some((m) => m.id === memberEntry.id)) {
+          existing.members.push(memberEntry);
+        }
+      } else {
+        byArtist.set(origin._id, {
+          artistName: origin.name,
+          stage: origin.stage,
+          endMs: origin.endMs,
+          members: [memberEntry],
+        });
+      }
+    }
+    return {
+      destinationArtistName: conv.destinationArtist.name,
+      destinationStage: conv.destinationStage,
+      destinationStartMs: conv.destinationArtist.startMs,
+      origins: Array.from(byArtist.values()).sort(
+        (a, b) => a.endMs - b.endMs,
+      ),
+    };
+  }, [conv, membersById, myMemberId]);
+
   return (
-    <div className="rounded-xl border border-border/60 bg-card/40 p-4 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm font-semibold tabular-nums">
-          {formatRange(conv.windowStart, conv.windowEnd)}
-        </div>
-      </div>
+    <div
+      data-meetup-key={meetupKey}
+      className={cn(
+        "rounded-xl border border-border/60 bg-card/40 p-4 shadow-sm transition-all duration-300",
+        highlighted &&
+          "border-primary bg-primary/10 ring-2 ring-primary ring-offset-2 ring-offset-background",
+      )}
+    >
+      <ConvergenceTimeHeader
+        windowStart={conv.windowStart}
+        windowEnd={conv.windowEnd}
+        meetMs={existing?.meetMs}
+        meetEndMs={existing?.meetEndMs}
+      />
       <div
         className="mt-2 flex flex-wrap items-center gap-2 rounded-md px-3 py-2 text-sm"
         style={{
@@ -77,8 +136,53 @@ export function ConvergenceCard({
           destinationStage={conv.destinationStage}
           existing={existing}
           myMemberId={myMemberId}
+          timeContext={timeContext}
         />
       </div>
+    </div>
+  );
+}
+
+function ConvergenceTimeHeader({
+  windowStart,
+  windowEnd,
+  meetMs,
+  meetEndMs,
+}: {
+  windowStart: number;
+  windowEnd: number;
+  meetMs: number | undefined;
+  meetEndMs: number | undefined;
+}) {
+  const hasMeetStart = typeof meetMs === "number";
+  const hasMeetRange =
+    hasMeetStart && typeof meetEndMs === "number" && meetEndMs > (meetMs as number);
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
+      <div className="flex items-baseline gap-2">
+        <span
+          className={cn(
+            "text-sm font-semibold tabular-nums",
+            hasMeetStart ? "text-emerald-200" : "text-foreground",
+          )}
+        >
+          {hasMeetRange
+            ? `${formatTime(meetMs as number)} – ${formatTime(meetEndMs as number)}`
+            : hasMeetStart
+              ? `Gather ${formatTime(meetMs as number)}`
+              : formatRange(windowStart, windowEnd)}
+        </span>
+        {hasMeetStart && (
+          <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-300">
+            Meet window
+          </span>
+        )}
+      </div>
+      {hasMeetStart && (
+        <span className="text-[11px] tabular-nums text-muted-foreground">
+          Available {formatRange(windowStart, windowEnd)}
+        </span>
+      )}
     </div>
   );
 }

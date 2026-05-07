@@ -5,7 +5,6 @@ import { AppShell } from "@/components/AppShell";
 
 const Onboarding = lazy(() => import("./routes/Onboarding"));
 const Schedule = lazy(() => import("./routes/Schedule"));
-const Meetups = lazy(() => import("./routes/Meetups"));
 const Coordinate = lazy(() => import("./routes/Coordinate"));
 
 function RequireSession({ children }: { children: React.ReactNode }) {
@@ -45,17 +44,8 @@ export default function App() {
             </RequireSession>
           }
         />
-        <Route
-          path="/meetups"
-          element={
-            <RequireSession>
-              <AppShell>
-                <Meetups />
-              </AppShell>
-            </RequireSession>
-          }
-        />
-        <Route path="/people" element={<Navigate to="/meetups" replace />} />
+        <Route path="/meetups" element={<Navigate to="/schedule" replace />} />
+        <Route path="/people" element={<Navigate to="/schedule" replace />} />
         <Route
           path="/coordinate"
           element={

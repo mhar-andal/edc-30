@@ -237,59 +237,6 @@ export const join = mutation({
   },
 });
 
-/**
- * Bulk-copy a source member's sidequest RSVPs (any sidequest they
- * participate in) for one day onto the target member. Existing RSVPs
- * are kept (idempotent skip). The source member's role doesn't matter
- * — creator-rooted sidequests are joined, not cloned.
- */
-export const copyRsvpsFromMember = mutation({
-  args: {
-    sourceMemberId: v.id("members"),
-    targetMemberId: v.id("members"),
-    day: dayValidator,
-  },
-  handler: async (ctx, { sourceMemberId, targetMemberId, day }) => {
-    if (sourceMemberId === targetMemberId) {
-      throw new Error("Cannot copy from yourself.");
-    }
-    const source = await ctx.db.get(sourceMemberId);
-    const target = await ctx.db.get(targetMemberId);
-    if (!source || !target) throw new Error("Member not found.");
-
-    const sourceRsvps = await ctx.db
-      .query("sidequestParticipants")
-      .withIndex("by_member", (q) => q.eq("memberId", sourceMemberId))
-      .collect();
-
-    let joined = 0;
-    let skipped = 0;
-    const now = Date.now();
-    for (const r of sourceRsvps) {
-      const sq = await ctx.db.get(r.sidequestId);
-      if (!sq || sq.day !== day) continue;
-
-      const existing = await ctx.db
-        .query("sidequestParticipants")
-        .withIndex("by_sidequest_member", (q) =>
-          q.eq("sidequestId", r.sidequestId).eq("memberId", targetMemberId),
-        )
-        .first();
-      if (existing) {
-        skipped += 1;
-        continue;
-      }
-      await ctx.db.insert("sidequestParticipants", {
-        sidequestId: r.sidequestId,
-        memberId: targetMemberId,
-        joinedAt: now,
-      });
-      joined += 1;
-    }
-    return { joined, skipped };
-  },
-});
-
 export const leave = mutation({
   args: {
     sidequestId: v.id("sidequests"),

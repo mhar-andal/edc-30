@@ -6,7 +6,6 @@ import {
   Compass,
   Edit2,
   LogOut,
-  MapPin,
   Trash2,
 } from "lucide-react";
 import { api } from "../../convex/_generated/api";
@@ -31,7 +30,6 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { to: "/schedule", label: "Schedule", icon: Calendar },
   { to: "/coordinate", label: "Coordinate", icon: Compass },
-  { to: "/meetups", label: "Meetups", icon: MapPin },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -98,7 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="mx-auto grid h-16 max-w-md grid-cols-3">
+        <div className="mx-auto grid h-16 max-w-md grid-cols-2">
           {TABS.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}

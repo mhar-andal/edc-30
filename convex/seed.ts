@@ -175,70 +175,57 @@ const ITINERARIES: Record<
   Record<string, string[]>
 > = {
   day_1: {
-    // Day 1 demo arc
-    //  - 7pm: cliques settle into their preferred areas (split across stages)
-    //  - 11:19pm: half see Sofi Tukker (Kinetic), half see Levity (Circuit)
-    //  - 12:25am: EVERYONE converges on Wooli (Circuit) — different from-stage,
-    //    same to-stage convergence opportunity.
-    //  - 1:47am: split again — half stay for Fisher (Kinetic), half catch
-    //    The Outlaw → Holy Priest at Circuit; reconverge on Porter Robinson at
-    //    Kinetic 3:01am.
+    // Day 1 demo arc — five canonical timeslots, alternating between
+    // Kinetic Field (KF) and Circuit Grounds (CG) so each split-point
+    // produces a real convergence (members arrive from two different
+    // origin stages), and each "everyone" slot is the destination of
+    // people coming from KF and CG.
+    //  - 11:15pm: split — Sofi Tukker (KF) vs Levity (CG)
+    //  - 12:25am: split — The Chainsmoker (KF) vs Wooli (CG)
+    //  - 1:47am: EVERYONE converges on Fisher (KF)
+    //  - 3:01am: split — Porter Robinson (KF) vs Ray Volpe (CG)
+    //  - 4:30am: EVERYONE converges on Level Up (CG)
     "nick-katrina": [
-      "Laidback Luke B2B",
-      "Argy",
-      "Chris Lorenzo",
       "Sofi Tukker",
       "Wooli",
       "Fisher",
       "Porter Robinson",
+      "Level Up",
     ],
     "mhar-neriza": [
-      "Riot",
-      "Heyz",
-      "Muzz",
       "Sofi Tukker",
-      "Wooli",
+      "The Chainsmoker",
       "Fisher",
-      "Adventure Club",
-      "Porter Robinson",
+      "Ray Volpe",
+      "Level Up",
     ],
     "lillian-percy": [
-      "Jackie Hollander",
-      "Roddy Lima",
-      "Westend",
-      "Walker & Royce B2B",
       "Levity",
-      "Wooli",
-      "MPH",
-      "Porter Robinson",
-    ],
-    "lycka-jonathan-ethan": [
-      "Anastazja",
-      "Mestiza",
-      "DJ Tennis B2B Chloe Caillet",
-      "Levity",
-      "Wooli",
-      "Joseph Capriati",
-      "Porter Robinson",
-    ],
-    "brandon-jedd": [
-      "Sarah De Warren",
-      "Cold Blue",
-      "Cosmic Gate",
-      "Levity",
-      "Wooli",
-      "Ilan Bluestone",
-      "Porter Robinson",
-    ],
-    "reymar-crew": [
-      "Laidback Luke B2B",
-      "Korolova",
-      "Argy",
-      "Chris Lorenzo",
-      "Sofi Tukker",
       "Wooli",
       "Fisher",
       "Porter Robinson",
+      "Level Up",
+    ],
+    "lycka-jonathan-ethan": [
+      "Levity",
+      "The Chainsmoker",
+      "Fisher",
+      "Ray Volpe",
+      "Level Up",
+    ],
+    "brandon-jedd": [
+      "Sofi Tukker",
+      "Wooli",
+      "Fisher",
+      "Ray Volpe",
+      "Level Up",
+    ],
+    "reymar-crew": [
+      "Levity",
+      "The Chainsmoker",
+      "Fisher",
+      "Porter Robinson",
+      "Level Up",
     ],
   },
   day_2: {
@@ -470,6 +457,18 @@ export const demo = mutation({
         fromArtists: ["Sofi Tukker", "Levity"],
         sharedToArtist: "Wooli",
         label: "Electric Avenue Sign",
+      },
+      {
+        day: "day_1",
+        fromArtists: ["Wooli", "The Chainsmoker"],
+        sharedToArtist: "Fisher",
+        label: "Kinetic Field Entrance",
+      },
+      {
+        day: "day_1",
+        fromArtists: ["Porter Robinson", "Ray Volpe"],
+        sharedToArtist: "Level Up",
+        label: "Basspod GA Bathrooms",
       },
       {
         day: "day_2",

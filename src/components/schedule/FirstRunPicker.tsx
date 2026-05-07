@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import {
   Check,
@@ -7,6 +7,7 @@ import {
   Loader2,
   MapPin,
   Plus,
+  RotateCcw,
   Sparkles,
   X,
 } from "lucide-react";
@@ -69,13 +70,62 @@ type Phase =
     };
 
 interface Slot {
-  /** "ongoing" = artists already playing at arrival; "starts" = artists with startMs equal to this slot's startMs. */
+  /** "ongoing" = artists already playing at arrival; "starts" = artists starting in a ~30 min window. */
   kind: "ongoing" | "starts";
+  /** Earliest startMs in the slot — used to anchor sorting / titles. */
   startMs: number;
+  /** Latest startMs in the slot. Equal to `startMs` for single-artist slots; > startMs when the window groups multiple artists. */
+  endStartMs: number;
   artists: Artist[];
 }
 
 const DEFAULT_SIDEQUEST_DURATION_MS = 60 * 60 * 1000;
+/**
+ * Width of the bucketing window for the slot phase. All artists with
+ * starts within this many ms of the bucket's anchor (its earliest
+ * start) are presented in one step. Picking up to two from a single
+ * step lets the user "I'll catch the back half of A and the front
+ * half of B" in one decision instead of two.
+ */
+const SLOT_GROUP_WINDOW_MS = 30 * 60 * 1000;
+const PROGRESS_STORAGE_PREFIX = "edc.first-run-picker.progress.v1";
+
+interface SavedProgress {
+  arrivalsByDay: Record<string, number>;
+  phase: Phase;
+}
+
+function progressKey(memberId: string): string {
+  return `${PROGRESS_STORAGE_PREFIX}:${memberId}`;
+}
+
+function loadProgress(memberId: string): SavedProgress | null {
+  try {
+    const raw = window.localStorage.getItem(progressKey(memberId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SavedProgress;
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function persistProgress(memberId: string, progress: SavedProgress) {
+  try {
+    window.localStorage.setItem(progressKey(memberId), JSON.stringify(progress));
+  } catch {
+    /* no-op */
+  }
+}
+
+function clearProgress(memberId: string) {
+  try {
+    window.localStorage.removeItem(progressKey(memberId));
+  } catch {
+    /* no-op */
+  }
+}
 
 /**
  * Arrival times offered as a dropdown — 4:00pm through 8:00pm in
@@ -122,19 +172,87 @@ export function FirstRunPicker({
     open: boolean;
     defaults: SidequestDraft;
   } | null>(null);
+  const [resumed, setResumed] = useState(false);
+  const justOpenedRef = useRef(false);
+  const slotScrollRef = useRef<HTMLDivElement>(null);
 
-  // Reset to first day's arrival prompt whenever the dialog opens.
+  // On open: try to restore saved progress so the user lands back at
+  // the step they left. Falls back to a fresh run when there's no
+  // member id (shouldn't happen at this point) or no saved state.
   useEffect(() => {
     if (!open) return;
-    setPhase({ kind: "arrival", dayIndex: 0 });
-    setArrivalsByDay(new Map());
-  }, [open]);
+    justOpenedRef.current = true;
+    if (!myMemberId) {
+      setPhase({ kind: "arrival", dayIndex: 0 });
+      setArrivalsByDay(new Map());
+      setResumed(false);
+      return;
+    }
+    const saved = loadProgress(myMemberId);
+    if (
+      saved &&
+      saved.phase &&
+      ((saved.phase.kind === "arrival" &&
+        saved.phase.dayIndex >= 0 &&
+        saved.phase.dayIndex < DAYS.length) ||
+        (saved.phase.kind === "slot" &&
+          saved.phase.dayIndex >= 0 &&
+          saved.phase.dayIndex < DAYS.length))
+    ) {
+      const arrivalsMap = new Map<DayKey, number>();
+      for (const [k, v] of Object.entries(saved.arrivalsByDay ?? {})) {
+        if (k === "day_1" || k === "day_2" || k === "day_3") {
+          if (typeof v === "number" && Number.isFinite(v)) arrivalsMap.set(k, v);
+        }
+      }
+      setArrivalsByDay(arrivalsMap);
+      setPhase(saved.phase);
+      setResumed(saved.phase.kind !== "arrival" || saved.phase.dayIndex !== 0);
+    } else {
+      setPhase({ kind: "arrival", dayIndex: 0 });
+      setArrivalsByDay(new Map());
+      setResumed(false);
+    }
+  }, [open, myMemberId]);
+
+  // Persist progress on every state transition while the dialog is
+  // open, but skip the very first effect cycle right after opening so
+  // we don't immediately overwrite the freshly-loaded snapshot with
+  // the in-flight render state.
+  useEffect(() => {
+    if (!open || !myMemberId) return;
+    if (justOpenedRef.current) {
+      justOpenedRef.current = false;
+      return;
+    }
+    const arrivals: Record<string, number> = {};
+    for (const [k, v] of arrivalsByDay) arrivals[k] = v;
+    persistProgress(myMemberId, { arrivalsByDay: arrivals, phase });
+  }, [open, myMemberId, phase, arrivalsByDay]);
 
   // Seed the arrival input each time we land on the arrival phase.
   useEffect(() => {
     if (phase.kind !== "arrival") return;
     setArrivalDraft(DEFAULT_ARRIVAL_VALUE);
   }, [phase]);
+
+  // Once the user starts interacting with the slot phase, drop the
+  // "Resumed" hint chip — they're past the welcome-back moment.
+  useEffect(() => {
+    if (!resumed) return;
+    if (phase.kind === "arrival" && phase.dayIndex === 0) setResumed(false);
+  }, [resumed, phase]);
+
+  // Reset the artist-list scroll to the top whenever we land on a
+  // new step. Without this, a long list scrolled to the bottom on
+  // step N can keep its scroll position when stepping to N+1, hiding
+  // the new content behind a stale viewport offset.
+  useEffect(() => {
+    if (!open) return;
+    const el = slotScrollRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+  }, [open, phase]);
 
   const slotsByDay = useMemo<Map<DayKey, Slot[]>>(() => {
     const out = new Map<DayKey, Slot[]>();
@@ -148,24 +266,52 @@ export function FirstRunPicker({
       const ongoing = list
         .filter((a) => a.startMs < arrival && a.endMs > arrival)
         .sort((a, b) => a.startMs - b.startMs || a.stage.localeCompare(b.stage));
-      const futureByStart = new Map<number, Artist[]>();
-      for (const a of list) {
-        if (a.startMs < arrival) continue;
-        const arr = futureByStart.get(a.startMs) ?? [];
-        arr.push(a);
-        futureByStart.set(a.startMs, arr);
-      }
-      const sortedStarts = Array.from(futureByStart.keys()).sort((a, b) => a - b);
+
+      const future = list
+        .filter((a) => a.startMs >= arrival)
+        .sort((a, b) => a.startMs - b.startMs || a.stage.localeCompare(b.stage));
+
       const slots: Slot[] = [];
       if (ongoing.length > 0) {
-        slots.push({ kind: "ongoing", startMs: arrival, artists: ongoing });
+        slots.push({
+          kind: "ongoing",
+          startMs: arrival,
+          endStartMs: arrival,
+          artists: ongoing,
+        });
       }
-      for (const startMs of sortedStarts) {
-        const artists = (futureByStart.get(startMs) ?? []).sort((a, b) =>
-          a.stage.localeCompare(b.stage),
-        );
-        slots.push({ kind: "starts", startMs, artists });
+
+      // Greedy bucketing: every artist whose start lands within
+      // SLOT_GROUP_WINDOW_MS of the current bucket's anchor (the
+      // earliest start in that bucket) joins the bucket. The next
+      // out-of-window artist opens a new bucket.
+      let bucket: Artist[] = [];
+      let bucketAnchor = -Infinity;
+      for (const a of future) {
+        if (a.startMs - bucketAnchor > SLOT_GROUP_WINDOW_MS) {
+          if (bucket.length > 0) {
+            slots.push({
+              kind: "starts",
+              startMs: bucketAnchor,
+              endStartMs: bucket[bucket.length - 1].startMs,
+              artists: [...bucket],
+            });
+          }
+          bucketAnchor = a.startMs;
+          bucket = [a];
+        } else {
+          bucket.push(a);
+        }
       }
+      if (bucket.length > 0) {
+        slots.push({
+          kind: "starts",
+          startMs: bucketAnchor,
+          endStartMs: bucket[bucket.length - 1].startMs,
+          artists: [...bucket],
+        });
+      }
+
       out.set(day, slots);
     }
     return out;
@@ -210,13 +356,25 @@ export function FirstRunPicker({
       setPhase({ ...phase, slotIndex: nextIdx });
       return;
     }
-    // Move to next day's arrival, or close.
+    // Move to next day's arrival, or finish the flow.
     const nextDayIdx = phase.dayIndex + 1;
     if (nextDayIdx < DAYS.length) {
       setPhase({ kind: "arrival", dayIndex: nextDayIdx });
     } else {
-      onClose();
+      complete();
     }
+  }
+
+  function complete() {
+    if (myMemberId) clearProgress(myMemberId);
+    onClose();
+  }
+
+  function startOver() {
+    if (myMemberId) clearProgress(myMemberId);
+    setArrivalsByDay(new Map());
+    setPhase({ kind: "arrival", dayIndex: 0 });
+    setResumed(false);
   }
 
   function backFromSlot() {
@@ -289,9 +447,17 @@ export function FirstRunPicker({
         <DialogContent className="max-w-md gap-0 p-0">
           <DialogHeader className="space-y-2 border-b border-border/40 px-5 pb-3 pt-5">
             <div className="flex items-center justify-between gap-2">
-              <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-medium text-primary">
-                <Sparkles className="size-3" />
-                Quick pick
+              <div className="flex items-center gap-1.5">
+                <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-medium text-primary">
+                  <Sparkles className="size-3" />
+                  Quick pick
+                </div>
+                {resumed && (
+                  <div className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/30">
+                    <RotateCcw className="size-2.5" />
+                    Resumed
+                  </div>
+                )}
               </div>
               <span className="text-[11px] tabular-nums text-muted-foreground">
                 Day {phase.dayIndex + 1} / {totalDays}
@@ -339,6 +505,18 @@ export function FirstRunPicker({
                 <X className="size-3.5" />
                 Exit
               </Button>
+              {resumed && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={startOver}
+                  className="text-muted-foreground hover:text-foreground"
+                  title="Discard saved progress and start from Day 1"
+                >
+                  <RotateCcw className="size-3.5" />
+                  Start over
+                </Button>
+              )}
             </div>
             <Button onClick={commitArrival} disabled={!arrivalDraft}>
               Continue <ChevronRight className="size-4" />
@@ -353,19 +531,27 @@ export function FirstRunPicker({
   const day = DAYS[phase.dayIndex];
   const dayLabel = DAY_LABELS[day];
   const slots = slotsByDay.get(day) ?? [];
-  const currentSlot = slots[phase.slotIndex];
+  const currentSlot = slots[phase.slotIndex] ?? slots[slots.length - 1];
   if (!currentSlot) {
-    // Shouldn't happen — fall back to closing.
-    onClose();
+    // No slots for this day (e.g. a stale resume on a day with no
+    // future artists). Send the user back to that day's arrival
+    // picker rather than closing entirely.
+    if (phase.slotIndex !== 0 || arrivalsByDay.get(day) === undefined) {
+      setPhase({ kind: "arrival", dayIndex: phase.dayIndex });
+    }
     return null;
   }
 
   const totalSteps = slots.length;
+  const effectiveSlotIndex = Math.min(phase.slotIndex, totalSteps - 1);
   const isLastDayLastSlot =
-    phase.dayIndex === DAYS.length - 1 && phase.slotIndex === totalSteps - 1;
+    phase.dayIndex === DAYS.length - 1 &&
+    effectiveSlotIndex === totalSteps - 1;
   const slotPickedCount = currentSlot.artists.filter((a) =>
     myPickedSet.has(a._id),
   ).length;
+  const slotIsRange =
+    currentSlot.kind === "starts" && currentSlot.endStartMs > currentSlot.startMs;
 
   const sidequestsAtSlot = (sidequestsByDay.get(day) ?? []).filter(
     (sq) => sq.startMs <= currentSlot.startMs && sq.endMs > currentSlot.startMs,
@@ -377,35 +563,47 @@ export function FirstRunPicker({
         <DialogContent className="max-w-lg gap-0 p-0">
           <DialogHeader className="space-y-2 border-b border-border/40 px-5 pb-3 pt-5">
             <div className="flex items-center justify-between gap-2">
-              <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-medium text-primary">
-                <Sparkles className="size-3" />
-                Quick pick
+              <div className="flex items-center gap-1.5">
+                <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-medium text-primary">
+                  <Sparkles className="size-3" />
+                  Quick pick
+                </div>
+                {resumed && (
+                  <div className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/30">
+                    <RotateCcw className="size-2.5" />
+                    Resumed
+                  </div>
+                )}
               </div>
               <span className="text-[11px] tabular-nums text-muted-foreground">
-                {dayLabel.short} · {phase.slotIndex + 1} / {totalSteps}
+                {dayLabel.short} · {effectiveSlotIndex + 1} / {totalSteps}
               </span>
             </div>
             <DialogTitle className="text-lg leading-tight">
               {currentSlot.kind === "ongoing"
                 ? `Still playing when you arrive at ${formatTime(phase.arrivalMs)}`
-                : `${dayLabel.full} · ${formatTime(currentSlot.startMs)}`}
+                : slotIsRange
+                  ? `${dayLabel.full} · ${formatTime(currentSlot.startMs)} – ${formatTime(currentSlot.endStartMs)}`
+                  : `${dayLabel.full} · ${formatTime(currentSlot.startMs)}`}
             </DialogTitle>
             <DialogDescription>
               {currentSlot.kind === "ongoing"
                 ? "Catch the tail end of any of these — or skip ahead and pick from what starts next."
-                : "Pick anyone you want to see at this time. You can pick more than one if you want to catch half of two sets."}
+                : slotIsRange
+                  ? "These sets all start within ~30 minutes of each other. Pick anyone you'd catch — pick two if you want to do half-and-half."
+                  : "Pick anyone you want to see at this time. You can pick more than one if you want to catch half of two sets."}
             </DialogDescription>
             <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
               <div
                 className="h-full rounded-full bg-primary transition-all"
                 style={{
-                  width: `${((phase.slotIndex + 1) / totalSteps) * 100}%`,
+                  width: `${((effectiveSlotIndex + 1) / totalSteps) * 100}%`,
                 }}
               />
             </div>
           </DialogHeader>
 
-          <ScrollArea className="max-h-[58vh] px-5">
+          <ScrollArea viewportRef={slotScrollRef} className="max-h-[58vh] px-5">
             <div className="space-y-2 py-3">
               {sidequestsAtSlot.length > 0 && (
                 <div className="space-y-1.5 rounded-lg border border-violet-500/30 bg-violet-500/5 p-2.5">
@@ -568,6 +766,18 @@ export function FirstRunPicker({
                 <X className="size-3.5" />
                 Exit
               </Button>
+              {resumed && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={startOver}
+                  className="text-muted-foreground hover:text-foreground"
+                  title="Discard saved progress and start from Day 1"
+                >
+                  <RotateCcw className="size-3.5" />
+                  Start over
+                </Button>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Button

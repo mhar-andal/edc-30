@@ -42,7 +42,23 @@ export function useScheduleData(): ScheduleData {
     const artistsArr: Artist[] = artists ?? [];
     const membersArr: Member[] = members ?? [];
     const selsArr = selections ?? [];
-    const sidequestsArr: Sidequest[] = sidequests ?? [];
+    // Defensive: older cached payloads of `sidequests.listAll` may
+    // pre-date the joined `participantMemberIds` field, or carry rows
+    // with missing/NaN timestamps from corrupted offline cache. Filter
+    // out anything we can't render and normalize the join field so the
+    // rest of the app doesn't have to keep guarding.
+    const sidequestsArr: Sidequest[] = (sidequests ?? [])
+      .filter(
+        (sq): sq is NonNullable<typeof sq> =>
+          !!sq &&
+          Number.isFinite(sq.startMs) &&
+          Number.isFinite(sq.endMs) &&
+          sq.endMs > sq.startMs,
+      )
+      .map((sq) => ({
+        ...sq,
+        participantMemberIds: sq.participantMemberIds ?? [],
+      }));
 
     const selectionsByMember = new Map<string, Set<string>>();
     const selectionsByArtist = new Map<string, Array<Id<"members">>>();
