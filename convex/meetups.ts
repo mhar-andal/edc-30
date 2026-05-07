@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { convergenceOwnerId, logActivity } from "./activity";
 
 const dayValidator = v.union(
   v.literal("day_1"),
@@ -56,10 +57,18 @@ export const setSpot = mutation({
     windowEndMs: v.number(),
     destinationStage: v.string(),
     label: v.optional(v.string()),
+    actorMemberId: v.optional(v.id("members")),
   },
   handler: async (
     ctx,
-    { day, windowStartMs, windowEndMs, destinationStage, label },
+    {
+      day,
+      windowStartMs,
+      windowEndMs,
+      destinationStage,
+      label,
+      actorMemberId,
+    },
   ) => {
     const trimmed = label?.trim() || undefined;
     const existing = await ctx.db
@@ -73,6 +82,14 @@ export const setSpot = mutation({
       )
       .first();
 
+    const ownerId = convergenceOwnerId({
+      day,
+      windowStartMs,
+      windowEndMs,
+      destinationStage,
+    });
+    const fromLabel = existing?.label;
+
     if (existing) {
       if (
         !trimmed &&
@@ -80,16 +97,34 @@ export const setSpot = mutation({
         existing.meetEndMs === undefined
       ) {
         await ctx.db.delete(existing._id);
+        if (fromLabel) {
+          await logActivity(ctx, {
+            ownerType: "convergence",
+            ownerId,
+            actorMemberId,
+            kind: "spot_changed",
+            data: { fromLabel, toLabel: undefined },
+          });
+        }
         return;
       }
       await ctx.db.patch(existing._id, {
         label: trimmed,
         editedAt: Date.now(),
       });
+      if (fromLabel !== trimmed) {
+        await logActivity(ctx, {
+          ownerType: "convergence",
+          ownerId,
+          actorMemberId,
+          kind: "spot_changed",
+          data: { fromLabel, toLabel: trimmed },
+        });
+      }
       return existing._id;
     }
     if (!trimmed) return;
-    return await ctx.db.insert("meetups", {
+    const inserted = await ctx.db.insert("meetups", {
       day,
       windowStartMs,
       windowEndMs,
@@ -97,6 +132,14 @@ export const setSpot = mutation({
       label: trimmed,
       editedAt: Date.now(),
     });
+    await logActivity(ctx, {
+      ownerType: "convergence",
+      ownerId,
+      actorMemberId,
+      kind: "spot_changed",
+      data: { fromLabel: undefined, toLabel: trimmed },
+    });
+    return inserted;
   },
 });
 
@@ -116,10 +159,19 @@ export const setMeetTime = mutation({
     destinationStage: v.string(),
     meetMs: v.optional(v.number()),
     meetEndMs: v.optional(v.number()),
+    actorMemberId: v.optional(v.id("members")),
   },
   handler: async (
     ctx,
-    { day, windowStartMs, windowEndMs, destinationStage, meetMs, meetEndMs },
+    {
+      day,
+      windowStartMs,
+      windowEndMs,
+      destinationStage,
+      meetMs,
+      meetEndMs,
+      actorMemberId,
+    },
   ) => {
     const clampedStart =
       meetMs === undefined
@@ -142,6 +194,17 @@ export const setMeetTime = mutation({
       )
       .first();
 
+    const ownerId = convergenceOwnerId({
+      day,
+      windowStartMs,
+      windowEndMs,
+      destinationStage,
+    });
+    const fromMeetMs = existing?.meetMs;
+    const fromMeetEndMs = existing?.meetEndMs;
+    const timeChanged =
+      fromMeetMs !== clampedStart || fromMeetEndMs !== clampedEnd;
+
     if (existing) {
       const remainingLabel = existing.label?.trim();
       if (
@@ -150,6 +213,20 @@ export const setMeetTime = mutation({
         !remainingLabel
       ) {
         await ctx.db.delete(existing._id);
+        if (fromMeetMs !== undefined || fromMeetEndMs !== undefined) {
+          await logActivity(ctx, {
+            ownerType: "convergence",
+            ownerId,
+            actorMemberId,
+            kind: "time_changed",
+            data: {
+              fromMeetMs,
+              toMeetMs: undefined,
+              fromMeetEndMs,
+              toMeetEndMs: undefined,
+            },
+          });
+        }
         return;
       }
       await ctx.db.patch(existing._id, {
@@ -157,10 +234,24 @@ export const setMeetTime = mutation({
         meetEndMs: clampedEnd,
         editedAt: Date.now(),
       });
+      if (timeChanged) {
+        await logActivity(ctx, {
+          ownerType: "convergence",
+          ownerId,
+          actorMemberId,
+          kind: "time_changed",
+          data: {
+            fromMeetMs,
+            toMeetMs: clampedStart,
+            fromMeetEndMs,
+            toMeetEndMs: clampedEnd,
+          },
+        });
+      }
       return existing._id;
     }
     if (clampedStart === undefined && clampedEnd === undefined) return;
-    return await ctx.db.insert("meetups", {
+    const inserted = await ctx.db.insert("meetups", {
       day,
       windowStartMs,
       windowEndMs,
@@ -169,6 +260,19 @@ export const setMeetTime = mutation({
       meetEndMs: clampedEnd,
       editedAt: Date.now(),
     });
+    await logActivity(ctx, {
+      ownerType: "convergence",
+      ownerId,
+      actorMemberId,
+      kind: "time_changed",
+      data: {
+        fromMeetMs: undefined,
+        toMeetMs: clampedStart,
+        fromMeetEndMs: undefined,
+        toMeetEndMs: clampedEnd,
+      },
+    });
+    return inserted;
   },
 });
 
@@ -181,10 +285,11 @@ export const clear = mutation({
     windowStartMs: v.number(),
     windowEndMs: v.number(),
     destinationStage: v.string(),
+    actorMemberId: v.optional(v.id("members")),
   },
   handler: async (
     ctx,
-    { day, windowStartMs, windowEndMs, destinationStage },
+    { day, windowStartMs, windowEndMs, destinationStage, actorMemberId },
   ) => {
     const existing = await ctx.db
       .query("meetups")
@@ -196,6 +301,41 @@ export const clear = mutation({
           .eq("destinationStage", destinationStage),
       )
       .first();
-    if (existing) await ctx.db.delete(existing._id);
+    if (!existing) return;
+
+    const ownerId = convergenceOwnerId({
+      day,
+      windowStartMs,
+      windowEndMs,
+      destinationStage,
+    });
+    const fromLabel = existing.label;
+    const fromMeetMs = existing.meetMs;
+    const fromMeetEndMs = existing.meetEndMs;
+
+    await ctx.db.delete(existing._id);
+    if (fromLabel) {
+      await logActivity(ctx, {
+        ownerType: "convergence",
+        ownerId,
+        actorMemberId,
+        kind: "spot_changed",
+        data: { fromLabel, toLabel: undefined },
+      });
+    }
+    if (fromMeetMs !== undefined || fromMeetEndMs !== undefined) {
+      await logActivity(ctx, {
+        ownerType: "convergence",
+        ownerId,
+        actorMemberId,
+        kind: "time_changed",
+        data: {
+          fromMeetMs,
+          toMeetMs: undefined,
+          fromMeetEndMs,
+          toMeetEndMs: undefined,
+        },
+      });
+    }
   },
 });
