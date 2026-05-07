@@ -138,6 +138,7 @@ export function MeetupSpotPicker({
       windowEndMs: windowEnd,
       destinationStage,
       label: next ?? undefined,
+      actorMemberId: myMemberId ?? undefined,
     });
   }
 
@@ -190,6 +191,7 @@ export function MeetupSpotPicker({
         destinationStage,
         meetMs: start,
         meetEndMs: end,
+        actorMemberId: myMemberId ?? undefined,
       });
     } finally {
       setTimeBusy(false);
@@ -207,6 +209,7 @@ export function MeetupSpotPicker({
         destinationStage,
         meetMs: undefined,
         meetEndMs: undefined,
+        actorMemberId: myMemberId ?? undefined,
       });
     } finally {
       setTimeBusy(false);

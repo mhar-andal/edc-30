@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { logActivity } from "./activity";
 
 const dayValidator = v.union(
   v.literal("day_1"),
@@ -169,6 +170,20 @@ export const create = mutation({
       joinedAt: now,
     });
 
+    await logActivity(ctx, {
+      ownerType: "sidequest",
+      ownerId: sidequestId,
+      actorMemberId: args.memberId,
+      kind: "created",
+      data: {
+        toTitle: title,
+        toLocation: location,
+        toNotes: notes,
+        toStartMs: args.startMs,
+        toEndMs: args.endMs,
+      },
+    });
+
     return sidequestId;
   },
 });
@@ -207,6 +222,55 @@ export const update = mutation({
       endMs: args.endMs,
       editedAt: Date.now(),
     });
+
+    // Granular changelog: emit one row per field that actually changed,
+    // so the UI can render specific "title changed", "moved spot", etc.
+    // entries instead of a single opaque "edited" event.
+    const ownerId = args.sidequestId;
+    if (existing.title !== title) {
+      await logActivity(ctx, {
+        ownerType: "sidequest",
+        ownerId,
+        actorMemberId: args.memberId,
+        kind: "title_changed",
+        data: { fromTitle: existing.title, toTitle: title },
+      });
+    }
+    if ((existing.location ?? undefined) !== location) {
+      await logActivity(ctx, {
+        ownerType: "sidequest",
+        ownerId,
+        actorMemberId: args.memberId,
+        kind: "location_changed",
+        data: {
+          fromLocation: existing.location,
+          toLocation: location,
+        },
+      });
+    }
+    if ((existing.notes ?? undefined) !== notes) {
+      await logActivity(ctx, {
+        ownerType: "sidequest",
+        ownerId,
+        actorMemberId: args.memberId,
+        kind: "notes_changed",
+        data: { fromNotes: existing.notes, toNotes: notes },
+      });
+    }
+    if (existing.startMs !== args.startMs || existing.endMs !== args.endMs) {
+      await logActivity(ctx, {
+        ownerType: "sidequest",
+        ownerId,
+        actorMemberId: args.memberId,
+        kind: "schedule_changed",
+        data: {
+          fromStartMs: existing.startMs,
+          toStartMs: args.startMs,
+          fromEndMs: existing.endMs,
+          toEndMs: args.endMs,
+        },
+      });
+    }
   },
 });
 
@@ -238,6 +302,16 @@ export const remove = mutation({
       .collect();
     for (const c of comments) await ctx.db.delete(c._id);
 
+    // Cascade activity rows too — they reference the sidequest row id
+    // which is about to disappear.
+    const activityRows = await ctx.db
+      .query("activity")
+      .withIndex("by_owner", (q) =>
+        q.eq("ownerType", "sidequest").eq("ownerId", sidequestId),
+      )
+      .collect();
+    for (const a of activityRows) await ctx.db.delete(a._id);
+
     await ctx.db.delete(sidequestId);
   },
 });
@@ -261,11 +335,18 @@ export const join = mutation({
       .first();
     if (existing) return existing._id;
 
-    return await ctx.db.insert("sidequestParticipants", {
+    const id = await ctx.db.insert("sidequestParticipants", {
       sidequestId,
       memberId,
       joinedAt: Date.now(),
     });
+    await logActivity(ctx, {
+      ownerType: "sidequest",
+      ownerId: sidequestId,
+      actorMemberId: memberId,
+      kind: "joined",
+    });
+    return id;
   },
 });
 
@@ -289,6 +370,13 @@ export const leave = mutation({
         q.eq("sidequestId", sidequestId).eq("memberId", memberId),
       )
       .first();
-    if (existing) await ctx.db.delete(existing._id);
+    if (!existing) return;
+    await ctx.db.delete(existing._id);
+    await logActivity(ctx, {
+      ownerType: "sidequest",
+      ownerId: sidequestId,
+      actorMemberId: memberId,
+      kind: "left",
+    });
   },
 });

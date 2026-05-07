@@ -8,10 +8,13 @@
  * @module
  */
 
+import type * as activity from "../activity.js";
 import type * as artists from "../artists.js";
+import type * as comments from "../comments.js";
 import type * as meetups from "../meetups.js";
 import type * as memberSelections from "../memberSelections.js";
 import type * as members from "../members.js";
+import type * as mentions from "../mentions.js";
 import type * as seed from "../seed.js";
 import type * as sidequests from "../sidequests.js";
 
@@ -22,10 +25,13 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  activity: typeof activity;
   artists: typeof artists;
+  comments: typeof comments;
   meetups: typeof meetups;
   memberSelections: typeof memberSelections;
   members: typeof members;
+  mentions: typeof mentions;
   seed: typeof seed;
   sidequests: typeof sidequests;
 }>;

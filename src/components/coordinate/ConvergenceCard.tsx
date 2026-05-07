@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { ArrowRight } from "lucide-react";
 import { MemberChip } from "@/components/MemberChip";
+import { ChangelogSection } from "@/components/changelog/ChangelogSection";
 import { CommentsSection } from "@/components/comments/CommentsSection";
 import {
   MeetupSpotPicker,
@@ -152,6 +153,19 @@ export function ConvergenceCard({
             destinationStage: conv.destinationStage,
           })}
           myMemberId={myMemberId}
+          membersById={membersById}
+        />
+      </div>
+
+      <div className="mt-2">
+        <ChangelogSection
+          ownerType="convergence"
+          ownerId={convergenceOwnerId({
+            day,
+            windowStartMs: conv.windowStart,
+            windowEndMs: conv.windowEnd,
+            destinationStage: conv.destinationStage,
+          })}
           membersById={membersById}
         />
       </div>

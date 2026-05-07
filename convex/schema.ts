@@ -121,4 +121,68 @@ export default defineSchema({
   })
     .index("by_owner", ["ownerType", "ownerId", "createdAt"])
     .index("by_author", ["authorMemberId"]),
+
+  /**
+   * Append-only changelog of structural changes to a sidequest or
+   * convergence. Mirrors `comments`'s polymorphic owner scheme so the
+   * changelog UI lives next to the comment thread on the same parent.
+   *
+   * Rows are written from inside the relevant mutations (sidequests,
+   * meetups) and never edited. When a sidequest is deleted, its rows
+   * are cascaded too. Convergence activity sticks around because the
+   * convergence is identified by a composite key, not a row id.
+   *
+   * `actorMemberId` is optional: legacy callers may not pass one yet,
+   * and seed/scripted writes also omit it. The UI falls back to
+   * "Someone" in that case.
+   */
+  activity: defineTable({
+    ownerType: v.union(v.literal("sidequest"), v.literal("convergence")),
+    ownerId: v.string(),
+    actorMemberId: v.optional(v.id("members")),
+    kind: v.union(
+      v.literal("created"),
+      v.literal("spot_changed"),
+      v.literal("time_changed"),
+      v.literal("title_changed"),
+      v.literal("location_changed"),
+      v.literal("notes_changed"),
+      v.literal("schedule_changed"),
+      v.literal("joined"),
+      v.literal("left"),
+    ),
+    /**
+     * Snapshot of the change for renderable text. Free-form so we
+     * don't lock ourselves in. Common keys:
+     *   - spot:     fromLabel, toLabel
+     *   - time:     fromMeetMs, toMeetMs, fromMeetEndMs, toMeetEndMs
+     *   - title:    fromTitle, toTitle
+     *   - location: fromLocation, toLocation
+     *   - notes:    fromNotes, toNotes
+     *   - schedule: fromStartMs, toStartMs, fromEndMs, toEndMs
+     */
+    data: v.optional(
+      v.object({
+        fromLabel: v.optional(v.string()),
+        toLabel: v.optional(v.string()),
+        fromMeetMs: v.optional(v.number()),
+        toMeetMs: v.optional(v.number()),
+        fromMeetEndMs: v.optional(v.number()),
+        toMeetEndMs: v.optional(v.number()),
+        fromTitle: v.optional(v.string()),
+        toTitle: v.optional(v.string()),
+        fromLocation: v.optional(v.string()),
+        toLocation: v.optional(v.string()),
+        fromNotes: v.optional(v.string()),
+        toNotes: v.optional(v.string()),
+        fromStartMs: v.optional(v.number()),
+        toStartMs: v.optional(v.number()),
+        fromEndMs: v.optional(v.number()),
+        toEndMs: v.optional(v.number()),
+      }),
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_owner", ["ownerType", "ownerId", "createdAt"])
+    .index("by_actor", ["actorMemberId"]),
 });

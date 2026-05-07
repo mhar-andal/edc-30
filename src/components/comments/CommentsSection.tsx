@@ -1,6 +1,13 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "convex/react";
-import { Loader2, MessageCircle, Send, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  Loader2,
+  MessageCircle,
+  Plus,
+  Send,
+  Trash2,
+} from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -51,6 +58,12 @@ export function CommentsSection({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<Id<"comments"> | null>(null);
+  // Collapsed by default. When `showHeading` is false the section is treated
+  // as embedded and always rendered expanded.
+  const [expanded, setExpanded] = useState(!showHeading);
+  // When the user clicks "Add a comment" while collapsed and empty, focus
+  // the textarea once it mounts.
+  const [autoFocusComposer, setAutoFocusComposer] = useState(false);
   const taRef = useRef<MentionTextareaHandle>(null);
 
   const memberList = useMemo<MentionMember[]>(() => {
@@ -88,6 +101,7 @@ export function CommentsSection({
         body: trimmed,
       });
       setDraft("");
+      setExpanded(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to post.");
     } finally {
@@ -112,6 +126,57 @@ export function CommentsSection({
   const totalCount = sortedComments.length;
   const canPost = !!myMemberId && !offline && !busy && draft.trim().length > 0;
 
+  // Focus the composer when the user opens via "Add a comment".
+  useEffect(() => {
+    if (expanded && autoFocusComposer) {
+      taRef.current?.focus();
+      setAutoFocusComposer(false);
+    }
+  }, [expanded, autoFocusComposer]);
+
+  // Collapsed trigger — only when `showHeading` is true (embedded uses are
+  // always expanded). While loading we still render a minimal trigger so the
+  // layout doesn't jump.
+  if (showHeading && !expanded) {
+    const triggerLabel = loading
+      ? "Comments…"
+      : totalCount === 0
+        ? myMemberId
+          ? "Add a comment"
+          : "No comments yet"
+        : `Show ${totalCount} comment${totalCount === 1 ? "" : "s"}`;
+    const TriggerIcon =
+      !loading && totalCount === 0 && myMemberId ? Plus : MessageCircle;
+    const isAddAction = !loading && totalCount === 0 && !!myMemberId;
+    const isPassive = !loading && totalCount === 0 && !myMemberId;
+    return (
+      <div className={cn(className)}>
+        <button
+          type="button"
+          disabled={isPassive}
+          onClick={() => {
+            setExpanded(true);
+            if (isAddAction) setAutoFocusComposer(true);
+          }}
+          className={cn(
+            "inline-flex w-full items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-medium transition-colors",
+            isPassive
+              ? "cursor-default border-border/40 text-muted-foreground"
+              : "border-border/60 text-foreground hover:bg-secondary/60",
+          )}
+        >
+          <TriggerIcon className="size-3.5" />
+          <span>{triggerLabel}</span>
+          {totalCount > 0 && (
+            <span className="ml-auto inline-flex items-center gap-1 text-muted-foreground">
+              <ChevronDown className="size-3.5" />
+            </span>
+          )}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className={cn("space-y-2.5", className)}>
       {showHeading && (
@@ -125,6 +190,15 @@ export function CommentsSection({
               </span>
             )}
           </span>
+          <button
+            type="button"
+            onClick={() => setExpanded(false)}
+            className="inline-flex items-center gap-1 rounded text-[10px] font-medium normal-case tracking-normal text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Collapse comments"
+          >
+            Hide
+            <ChevronDown className="size-3 rotate-180" />
+          </button>
         </div>
       )}
 

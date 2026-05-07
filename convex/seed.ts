@@ -150,6 +150,7 @@ export const clearAllUserData = mutation({
   args: {},
   handler: async (ctx) => {
     for (const name of [
+      "activity",
       "comments",
       "meetups",
       "sidequestParticipants",
@@ -224,48 +225,50 @@ const CLIQUES: DemoClique[] = [
 
 /**
  * Hand-scripted itineraries, designed so cliques travel together but
- * split at strategic moments and reconverge on the same next stage.
- * These artist names must match festival.json exactly.
+ * split at strategic moments and re-converge on the same next stage.
+ *
+ * Lookup is case-insensitive against the artists table (festival.json
+ * stores names in ALL CAPS), so these can stay in human-readable
+ * Title Case. Names should otherwise match festival.json verbatim.
  */
 const ITINERARIES: Record<
   string,
   Record<string, string[]>
 > = {
   day_1: {
-    // Day 1 demo arc — five canonical timeslots, alternating between
-    // Kinetic Field (KF) and Circuit Grounds (CG) so each split-point
-    // produces a real convergence (members arrive from two different
-    // origin stages), and each "everyone" slot is the destination of
-    // people coming from KF and CG.
-    //  - 11:15pm: split — Sofi Tukker (KF) vs Levity (CG)
-    //  - 12:25am: split — The Chainsmoker (KF) vs Wooli (CG)
-    //  - 1:47am: EVERYONE converges on Fisher (KF)
-    //  - 3:01am: split — Porter Robinson (KF) vs Ray Volpe (CG)
-    //  - 4:30am: EVERYONE converges on Level Up (CG)
+    // Day 1 demo arc — alternating Kinetic Field (KF) and Circuit
+    // Grounds (CG) so the destination of every "everyone" slot is the
+    // convergence of two distinct origin stages.
+    //   11:19pm: split — Sofi Tukker (KF) vs Levity (CG)
+    //   12:32am: split — The Chainsmokers (KF) vs Wooli (CG)
+    //                    convergences at BOTH (origins KF+CG each)
+    //   1:47am:  EVERYONE → Fisher (KF) — convergence
+    //   3:01am:  split — Porter Robinson (KF) vs Ray Volpe (CG)
+    //   4:30am:  EVERYONE → Level Up (CG) — convergence
     "nick-katrina": [
       "Sofi Tukker",
-      "Wooli",
+      "The Chainsmokers",
       "Fisher",
       "Porter Robinson",
       "Level Up",
     ],
     "mhar-neriza": [
       "Sofi Tukker",
-      "The Chainsmoker",
+      "Wooli",
       "Fisher",
       "Ray Volpe",
       "Level Up",
     ],
     "lillian-percy": [
       "Levity",
-      "Wooli",
+      "The Chainsmokers",
       "Fisher",
       "Porter Robinson",
       "Level Up",
     ],
     "lycka-jonathan-ethan": [
       "Levity",
-      "The Chainsmoker",
+      "Wooli",
       "Fisher",
       "Ray Volpe",
       "Level Up",
@@ -274,146 +277,112 @@ const ITINERARIES: Record<
       "Sofi Tukker",
       "Wooli",
       "Fisher",
-      "Ray Volpe",
+      "Porter Robinson",
       "Level Up",
     ],
     "reymar-crew": [
       "Levity",
-      "The Chainsmoker",
+      "The Chainsmokers",
       "Fisher",
-      "Porter Robinson",
+      "Ray Volpe",
       "Level Up",
     ],
   },
   day_2: {
-    // Day 2 demo arc
-    //  - 11:19pm: half see Hardwell (Kinetic), half see Sammy Virji (Circuit)
-    //  - 12:15am: EVERYONE converges on Tiësto (Circuit) — different from-stages
-    //  - 3am: split into Kaskade (Kinetic) vs Boys Noize (Circuit)
-    //  - 4:14am: reconverge on Above & Beyond at Kinetic
+    // Day 2 demo arc — six headline slots, each pair producing two
+    // convergences (one on KF, one on CG), then a final everyone-on-KF
+    // close-out at Above & Beyond.
+    //   11:19pm: split — Hardwell (KF) vs Sammy Virji (CG)
+    //   12:32am: split — John Summit (KF) vs Tiësto (CG)
+    //   1:47am:  split — Subtronics (KF) vs Peggy Gou B2B Ki/Ki (CG)
+    //   3:01am:  split — Kaskade (KF) vs Boys Noize (CG)
+    //   4:14am:  EVERYONE → Above & Beyond (KF)
     "nick-katrina": [
-      "Hayla",
-      "Sub Focus",
-      "Steve Aoki",
       "Hardwell",
-      "Tiësto",
+      "John Summit",
+      "Subtronics",
       "Kaskade",
       "Above & Beyond",
     ],
     "mhar-neriza": [
-      "Fallen With",
-      "Avello B2B",
-      "Hybrid Minds",
       "Hardwell",
       "Tiësto",
-      "Eptic B2B Space Laces",
-      "Kaskade",
-      "Above & Beyond",
-    ],
-    "lillian-percy": [
-      "Frost Children",
-      "Hannah Laing",
-      "Snow",
-      "Sammy Virji",
-      "Tiësto",
+      "Subtronics",
       "Boys Noize",
       "Above & Beyond",
     ],
+    "lillian-percy": [
+      "Sammy Virji",
+      "John Summit",
+      "Peggy Gou B2B Ki/Ki",
+      "Kaskade",
+      "Above & Beyond",
+    ],
     "lycka-jonathan-ethan": [
-      "Mink",
-      "Silvie Loto",
-      "Ahmed Spins",
       "Sammy Virji",
       "Tiësto",
-      "Prospa",
+      "Peggy Gou B2B Ki/Ki",
+      "Boys Noize",
       "Above & Beyond",
     ],
     "brandon-jedd": [
-      "Maria Healy",
-      "Superstrings",
-      "Billy Gillies",
-      "Paul Oakenfold",
-      "Sammy Virji",
+      "Hardwell",
       "Tiësto",
+      "Peggy Gou B2B Ki/Ki",
+      "Kaskade",
       "Above & Beyond",
     ],
     "reymar-crew": [
-      "AR/CO",
-      "Hayla",
-      "Sub Focus",
-      "Steve Aoki",
-      "Hardwell",
-      "Tiësto",
-      "Kaskade",
+      "Sammy Virji",
+      "John Summit",
+      "Subtronics",
+      "Boys Noize",
       "Above & Beyond",
     ],
   },
   day_3: {
-    // Day 3 demo arc
-    //  - 12:32am: half see Zedd (Kinetic), half see Solomun (Circuit)
-    //  - 1:47am: EVERYONE converges on Martin Garrix (Kinetic) — Solomun crew
-    //    crosses from Circuit, Zedd crew continues on Kinetic
-    //  - 4:14am: everyone closes out on Armin Van Buuren at Kinetic
+    // Day 3 demo arc — KF and CG schedules don't sync as cleanly, so
+    // most cliques pick a side for the night. Convergences land at
+    // Vintage Culture (CG, mid-late) and Armin Van Buuren (KF, close).
+    //   KF path: Griz B2B Wooli → Zedd → Martin Garrix → Cloonee → Armin
+    //   CG path: Chris Stussy → Solomun → Vintage Culture → Armin
     "nick-katrina": [
-      "Trace",
-      "Ship Wrek",
-      "Layton Giordani",
-      "Funk Tribu",
       "Griz B2B Wooli",
       "Zedd",
       "Martin Garrix",
+      "Cloonee",
       "Armin Van Buuren",
     ],
     "mhar-neriza": [
-      "Nightstalker",
-      "Sippy",
-      "Eazybaked",
-      "Infekt B2B Samplifire",
-      "Virtual Riot",
-      "Peekaboo",
-      "Zedd",
-      "Martin Garrix",
-      "Armin Van Buuren",
-    ],
-    "lillian-percy": [
-      "Gravagerz",
-      "Nostalgix",
-      "William Black",
-      "San Holo",
-      "Dabin",
-      "Solomun",
-      "Martin Garrix",
-      "Armin Van Buuren",
-    ],
-    "lycka-jonathan-ethan": [
-      "Bad Beat",
-      "Frankie Bones",
-      "Adiel",
-      "DJ Gigola",
-      "Solomun",
-      "Martin Garrix",
-      "999999999",
-      "Armin Van Buuren",
-    ],
-    "brandon-jedd": [
-      "Warung",
-      "Shingo Nakamura",
-      "Rebuke",
-      "Cristoph",
-      "Eli & Fur",
-      "Tinlicker",
-      "Solomun",
-      "Martin Garrix",
-      "Armin Van Buuren",
-    ],
-    "reymar-crew": [
-      "Trace",
-      "Ship Wrek",
-      "Layton Giordani",
-      "Funk Tribu",
       "Griz B2B Wooli",
       "Zedd",
       "Martin Garrix",
+      "Vintage Culture",
+      "Armin Van Buuren",
+    ],
+    "lillian-percy": [
+      "Chris Stussy",
+      "Solomun",
+      "Vintage Culture",
+      "Armin Van Buuren",
+    ],
+    "lycka-jonathan-ethan": [
+      "Chris Stussy",
+      "Solomun",
+      "Vintage Culture",
+      "Armin Van Buuren",
+    ],
+    "brandon-jedd": [
+      "Griz B2B Wooli",
+      "Zedd",
+      "Martin Garrix",
+      "Cloonee",
+      "Armin Van Buuren",
+    ],
+    "reymar-crew": [
+      "Chris Stussy",
+      "Solomun",
+      "Vintage Culture",
       "Armin Van Buuren",
     ],
   },
@@ -423,6 +392,7 @@ export const demo = mutation({
   args: {},
   handler: async (ctx) => {
     for (const t of [
+      "activity",
       "comments",
       "meetups",
       "sidequestParticipants",
@@ -440,9 +410,18 @@ export const demo = mutation({
     }
 
     type ArtistId = import("./_generated/dataModel").Id<"artists">;
+    // Case-insensitive lookup so the human-friendly Title Case names
+    // in ITINERARIES / SCRIPTED_MEETUPS match the (potentially
+    // ALL-CAPS) names that come straight out of festival.json.
     const artistByNameDay = new Map<string, ArtistId>();
     for (const a of allArtists) {
-      artistByNameDay.set(`${a.day}::${a.name}`, a._id);
+      artistByNameDay.set(`${a.day}::${a.name.toLowerCase()}`, a._id);
+    }
+    function resolveArtistId(
+      day: "day_1" | "day_2" | "day_3",
+      name: string,
+    ): ArtistId | undefined {
+      return artistByNameDay.get(`${day}::${name.toLowerCase()}`);
     }
 
     const now = Date.now();
@@ -473,7 +452,7 @@ export const demo = mutation({
       for (const { id, clique } of insertedMembers) {
         const list = itinerariesForDay[clique.cliqueKey] ?? [];
         for (const name of list) {
-          const artistId = artistByNameDay.get(`${day}::${name}`);
+          const artistId = resolveArtistId(day, name);
           if (!artistId) {
             missingArtists.push(`${day}::${name}`);
             continue;
@@ -495,7 +474,15 @@ export const demo = mutation({
       memberByName.set(member.name, id);
     }
     const artistByDayName = new Map<string, typeof allArtists[number]>();
-    for (const a of allArtists) artistByDayName.set(`${a.day}::${a.name}`, a);
+    for (const a of allArtists) {
+      artistByDayName.set(`${a.day}::${a.name.toLowerCase()}`, a);
+    }
+    function resolveArtist(
+      day: "day_1" | "day_2" | "day_3",
+      name: string,
+    ): typeof allArtists[number] | undefined {
+      return artistByDayName.get(`${day}::${name.toLowerCase()}`);
+    }
 
     const BUFFER_MS = 15 * 60 * 1000;
     /**
@@ -513,12 +500,12 @@ export const demo = mutation({
       {
         day: "day_1",
         fromArtists: ["Sofi Tukker", "Levity"],
-        sharedToArtist: "Wooli",
+        sharedToArtist: "The Chainsmokers",
         label: "Electric Avenue Sign",
       },
       {
         day: "day_1",
-        fromArtists: ["Wooli", "The Chainsmoker"],
+        fromArtists: ["The Chainsmokers", "Wooli"],
         sharedToArtist: "Fisher",
         label: "Kinetic Field Entrance",
       },
@@ -531,13 +518,19 @@ export const demo = mutation({
       {
         day: "day_2",
         fromArtists: ["Hardwell", "Sammy Virji"],
-        sharedToArtist: "Tiësto",
+        sharedToArtist: "John Summit",
         label: "Electric Avenue Sign",
       },
       {
+        day: "day_2",
+        fromArtists: ["Kaskade", "Boys Noize"],
+        sharedToArtist: "Above & Beyond",
+        label: "Kinetic Field Entrance",
+      },
+      {
         day: "day_3",
-        fromArtists: ["Dabin", "DJ Gigola"],
-        sharedToArtist: "Solomun",
+        fromArtists: ["Cloonee", "Vintage Culture"],
+        sharedToArtist: "Armin Van Buuren",
         label: "Electric Avenue Sign",
       },
     ];
@@ -545,9 +538,9 @@ export const demo = mutation({
     let meetupsAdded = 0;
     for (const m of SCRIPTED_MEETUPS) {
       const froms = m.fromArtists
-        .map((name) => artistByDayName.get(`${m.day}::${name}`))
+        .map((name) => resolveArtist(m.day, name))
         .filter((a): a is NonNullable<typeof a> => Boolean(a));
-      const shared = artistByDayName.get(`${m.day}::${m.sharedToArtist}`);
+      const shared = resolveArtist(m.day, m.sharedToArtist);
       if (froms.length < 2 || !shared) continue;
 
       const windowStartMs =
