@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation } from "convex/react";
-import { ArrowRight, Check, Clock, MapPin, Plus, X } from "lucide-react";
+import { ArrowRight, Check, Clock, Plus, X } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -12,12 +12,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { MemberChip } from "@/components/MemberChip";
+import { SpotPicker } from "@/components/SpotPicker";
 import { useCachedQuery } from "@/lib/useCachedQuery";
 import { useIsOffline } from "@/lib/useIsOffline";
 import { getStagePalette } from "@/lib/colors";
-import { formatTime, type DayKey } from "@/lib/time";
+import {
+  applyTimeToAnchor,
+  clampMs,
+  formatTime,
+  msToTimeInput,
+  type DayKey,
+} from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 const SLOT_MS = 15 * 60 * 1000;
@@ -37,12 +43,6 @@ function formatOffsetMin(min: number): string {
   if (rest === 0) return `+${hours}h`;
   return `+${hours}h ${rest}m`;
 }
-
-const DEFAULT_SPOTS = [
-  "Electric Avenue Sign",
-  "Basspod GA Bathrooms",
-  "Kinetic Field Entrance",
-] as const;
 
 export interface MeetTimeOriginGroup {
   artistName: string;
@@ -101,68 +101,44 @@ export function MeetupSpotPicker({
   const setSpot = useMutation(api.meetups.setSpot);
   const setMeetTime = useMutation(api.meetups.setMeetTime);
   const offline = useIsOffline();
-  const labelsList = useCachedQuery(api.meetups.listLabels) ?? [];
-  const [busyLabel, setBusyLabel] = useState<string | null>(null);
-  const [otherOpen, setOtherOpen] = useState(false);
-  const [otherDraft, setOtherDraft] = useState("");
-  const otherInputRef = useRef<HTMLInputElement | null>(null);
+  const meetupLabels = useCachedQuery(api.meetups.listLabels) ?? [];
+  const sidequestLabels = useCachedQuery(api.sidequests.listLabels) ?? [];
 
   const [timeBusy, setTimeBusy] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const [draftStartMs, setDraftStartMs] = useState<number | null>(null);
   const [draftEndMs, setDraftEndMs] = useState<number | null>(null);
 
-  // Build the chip list: defaults first, then any extra labels people
-  // have used elsewhere, sorted by frequency. Always include the
-  // currently-selected label even if it's brand new.
-  const chips = useMemo(() => {
-    const set = new Set<string>(DEFAULT_SPOTS);
-    for (const { label } of labelsList) set.add(label);
-    if (existing?.label) set.add(existing.label);
-    return Array.from(set);
-  }, [labelsList, existing?.label]);
+  // Combine known labels from convergences and sidequests so people
+  // see everywhere they've previously met up, sorted by combined
+  // frequency. The SpotPicker handles dedup.
+  const knownLabels = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const { label, count } of meetupLabels) {
+      counts.set(label, (counts.get(label) ?? 0) + count);
+    }
+    for (const { label, count } of sidequestLabels) {
+      counts.set(label, (counts.get(label) ?? 0) + count);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([label]) => label);
+  }, [meetupLabels, sidequestLabels]);
 
   const chosenLabel = existing?.label ?? null;
   const chosenMeetMs = existing?.meetMs ?? null;
   const chosenMeetEndMs = existing?.meetEndMs ?? null;
   const disabled = offline || !myMemberId;
 
-  useEffect(() => {
-    if (otherOpen) setTimeout(() => otherInputRef.current?.focus(), 0);
-    else setOtherDraft("");
-  }, [otherOpen]);
-
-  async function pickSpot(label: string) {
+  async function handleSpotChange(next: string | null) {
     if (disabled) return;
-    setBusyLabel(label);
-    try {
-      if (chosenLabel === label) {
-        await setSpot({
-          day,
-          windowStartMs: windowStart,
-          windowEndMs: windowEnd,
-          destinationStage,
-          label: undefined,
-        });
-      } else {
-        await setSpot({
-          day,
-          windowStartMs: windowStart,
-          windowEndMs: windowEnd,
-          destinationStage,
-          label,
-        });
-      }
-    } finally {
-      setBusyLabel(null);
-    }
-  }
-
-  async function commitOther() {
-    const trimmed = otherDraft.trim();
-    if (!trimmed || disabled) return;
-    setOtherOpen(false);
-    await pickSpot(trimmed);
+    await setSpot({
+      day,
+      windowStartMs: windowStart,
+      windowEndMs: windowEnd,
+      destinationStage,
+      label: next ?? undefined,
+    });
   }
 
   function openTimeEditor() {
@@ -239,93 +215,15 @@ export function MeetupSpotPicker({
 
   return (
     <div className="space-y-3">
-      <div className="space-y-2">
-        <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          <MapPin className="size-3" />
-          Meet at
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {chips.map((label) => {
-            const isChosen = chosenLabel === label;
-            const isBusy = busyLabel === label;
-            return (
-              <button
-                key={label}
-                type="button"
-                disabled={disabled || isBusy}
-                onClick={() => pickSpot(label)}
-                title={
-                  offline
-                    ? "Offline — reconnect to change the meet spot"
-                    : isChosen
-                      ? "Tap again to clear"
-                      : `Set meet spot to ${label}`
-                }
-                className={cn(
-                  "inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                  isChosen
-                    ? "bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-500/50 hover:bg-emerald-500/30"
-                    : "border border-border/60 bg-background/40 text-foreground hover:bg-background",
-                )}
-              >
-                {isChosen && <Check className="size-3" />}
-                {label}
-              </button>
-            );
-          })}
-          {!otherOpen ? (
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => setOtherOpen(true)}
-              title={
-                offline
-                  ? "Offline — reconnect to add a custom spot"
-                  : "Add a custom meet spot"
-              }
-              className="inline-flex h-7 items-center gap-1 rounded-full border border-dashed border-border/60 bg-background/40 px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Plus className="size-3" />
-              Other
-            </button>
-          ) : (
-            <div className="flex items-center gap-1">
-              <Input
-                ref={otherInputRef}
-                value={otherDraft}
-                onChange={(e) => setOtherDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void commitOther();
-                  }
-                  if (e.key === "Escape") setOtherOpen(false);
-                }}
-                placeholder="e.g. by the LED tower"
-                maxLength={48}
-                className="h-7 w-44 px-2 text-[11px]"
-              />
-              <button
-                type="button"
-                onClick={() => void commitOther()}
-                disabled={!otherDraft.trim() || disabled}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-primary transition-colors hover:bg-primary/25 disabled:opacity-50"
-                aria-label="Save custom spot"
-              >
-                <Check className="size-3" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setOtherOpen(false)}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                aria-label="Cancel"
-              >
-                <X className="size-3" />
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+      <SpotPicker
+        value={chosenLabel}
+        onChange={handleSpotChange}
+        knownLabels={knownLabels}
+        disabled={disabled}
+        disabledReason={
+          offline ? "Offline — reconnect to change the meet spot" : undefined
+        }
+      />
 
       <div className="space-y-2">
         <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -630,6 +528,22 @@ function MeetTimeDialog({
               );
             })}
           </div>
+          <CustomTimeRow
+            label="Custom gather"
+            valueMs={draftStartMs}
+            min={windowStart}
+            max={windowEnd}
+            onChange={(nextMs) => {
+              setDraftStartMs(nextMs);
+              if (nextMs !== null) {
+                if (draftEndMs === null || draftEndMs < nextMs) {
+                  setDraftEndMs(
+                    Math.min(nextMs + DEFAULT_MEET_DURATION_MS, windowEnd),
+                  );
+                }
+              }
+            }}
+          />
         </section>
 
         <section className="space-y-1.5">
@@ -652,12 +566,22 @@ function MeetTimeDialog({
               Pick a gather time first.
             </p>
           ) : (
-            <LeaveOffsetChips
-              startMs={draftStartMs}
-              draftEndMs={draftEndMs}
-              setDraftEndMs={setDraftEndMs}
-              windowEnd={windowEnd}
-            />
+            <>
+              <LeaveOffsetChips
+                startMs={draftStartMs}
+                draftEndMs={draftEndMs}
+                setDraftEndMs={setDraftEndMs}
+                windowEnd={windowEnd}
+              />
+              <CustomTimeRow
+                label="Custom leave"
+                valueMs={draftEndMs}
+                min={draftStartMs}
+                max={windowEnd}
+                allowClear
+                onChange={setDraftEndMs}
+              />
+            </>
           )}
         </section>
 
@@ -680,6 +604,74 @@ function MeetTimeDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Inline labeled `<input type="time">` for typing a specific minute
+ * inside the meetup window. The displayed value mirrors `valueMs` so
+ * presets/chips and this input stay in sync — typing here is just an
+ * alternate way to set the same draft state. The chosen time is
+ * always clamped to `[min, max]` so the user can't escape the
+ * convergence window.
+ */
+function CustomTimeRow({
+  label,
+  valueMs,
+  min,
+  max,
+  onChange,
+  allowClear = false,
+}: {
+  label: string;
+  valueMs: number | null;
+  min: number;
+  max: number;
+  onChange: (nextMs: number | null) => void;
+  allowClear?: boolean;
+}) {
+  // Render the input as a controlled element using HH:MM in PDT.
+  // `applyTimeToAnchor` figures out which calendar day the value
+  // belongs to from the lower bound of the window, which matters for
+  // late-night convergences that cross midnight.
+  const displayValue = valueMs !== null ? msToTimeInput(valueMs) : "";
+  return (
+    <div className="flex items-center gap-2 pt-1">
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <input
+        type="time"
+        value={displayValue}
+        min={msToTimeInput(min)}
+        max={msToTimeInput(max)}
+        step={60}
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (!raw) {
+            if (allowClear) onChange(null);
+            return;
+          }
+          const candidate = applyTimeToAnchor(raw, min);
+          onChange(clampMs(candidate, min, max));
+        }}
+        className={cn(
+          "h-7 rounded-md border border-border/60 bg-background/40 px-2 text-[12px] tabular-nums text-foreground",
+          "focus:outline-none focus:ring-1 focus:ring-emerald-500/50",
+          "[&::-webkit-calendar-picker-indicator]:opacity-60",
+        )}
+        aria-label={label}
+      />
+      {allowClear && valueMs !== null && (
+        <button
+          type="button"
+          onClick={() => onChange(null)}
+          className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          Clear
+        </button>
+      )}
+    </div>
   );
 }
 

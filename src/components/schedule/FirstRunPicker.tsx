@@ -9,6 +9,8 @@ import {
   Plus,
   RotateCcw,
   Sparkles,
+  UserPlus,
+  UserX,
   X,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
@@ -28,7 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { MemberChip } from "@/components/MemberChip";
 import {
   SidequestDialog,
@@ -161,8 +162,12 @@ export function FirstRunPicker({
   sidequestsByDay,
 }: Props) {
   const toggle = useMutation(api.memberSelections.toggle);
+  const joinSidequest = useMutation(api.sidequests.join);
+  const leaveSidequest = useMutation(api.sidequests.leave);
   const offline = useIsOffline();
   const [busyArtistId, setBusyArtistId] = useState<Id<"artists"> | null>(null);
+  const [busySidequestId, setBusySidequestId] =
+    useState<Id<"sidequests"> | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: "arrival", dayIndex: 0 });
   const [arrivalDraft, setArrivalDraft] = useState<string>("");
   const [arrivalsByDay, setArrivalsByDay] = useState<Map<DayKey, number>>(
@@ -174,7 +179,10 @@ export function FirstRunPicker({
   } | null>(null);
   const [resumed, setResumed] = useState(false);
   const justOpenedRef = useRef(false);
-  const slotScrollRef = useRef<HTMLDivElement>(null);
+  // Ref to the scrollable DialogContent element. We scroll the whole
+  // dialog (rather than an inner ScrollArea) on every phase change so
+  // the next step always starts at the top.
+  const dialogScrollRef = useRef<HTMLDivElement>(null);
 
   // On open: try to restore saved progress so the user lands back at
   // the step they left. Falls back to a fresh run when there's no
@@ -243,13 +251,14 @@ export function FirstRunPicker({
     if (phase.kind === "arrival" && phase.dayIndex === 0) setResumed(false);
   }, [resumed, phase]);
 
-  // Reset the artist-list scroll to the top whenever we land on a
-  // new step. Without this, a long list scrolled to the bottom on
-  // step N can keep its scroll position when stepping to N+1, hiding
-  // the new content behind a stale viewport offset.
+  // Reset the dialog's scroll position to the top whenever we land
+  // on a new step. The dialog itself owns the scroll context now,
+  // so without this a long list scrolled to the bottom on step N
+  // would keep its scroll position when stepping to N+1, hiding the
+  // new content behind a stale viewport offset.
   useEffect(() => {
     if (!open) return;
-    const el = slotScrollRef.current;
+    const el = dialogScrollRef.current;
     if (!el) return;
     el.scrollTop = 0;
   }, [open, phase]);
@@ -342,15 +351,10 @@ export function FirstRunPicker({
     });
   }
 
-  function advanceFromSlot(allowEmpty: boolean) {
+  function advanceFromSlot() {
     if (phase.kind !== "slot") return;
     const day = DAYS[phase.dayIndex];
     const slots = slotsByDay.get(day) ?? [];
-    if (!allowEmpty && slots[phase.slotIndex]) {
-      const slot = slots[phase.slotIndex];
-      const picked = slot.artists.some((a) => myPickedSet.has(a._id));
-      if (!picked) return;
-    }
     const nextIdx = phase.slotIndex + 1;
     if (nextIdx < slots.length) {
       setPhase({ ...phase, slotIndex: nextIdx });
@@ -415,6 +419,24 @@ export function FirstRunPicker({
     }
   }
 
+  async function toggleSidequestJoin(sq: Sidequest) {
+    if (!myMemberId || offline) return;
+    const iJoined = sq.participantMemberIds.some((id) => id === myMemberId);
+    // Creators are auto-joined and the server rejects them leaving —
+    // bail rather than firing a request that's guaranteed to fail.
+    if (iJoined && sq.createdByMemberId === myMemberId) return;
+    setBusySidequestId(sq._id);
+    try {
+      if (iJoined) {
+        await leaveSidequest({ sidequestId: sq._id, memberId: myMemberId });
+      } else {
+        await joinSidequest({ sidequestId: sq._id, memberId: myMemberId });
+      }
+    } finally {
+      setBusySidequestId(null);
+    }
+  }
+
   function openSidequestDialog(slot: Slot, day: DayKey) {
     const range = FESTIVAL_DAY_RANGE_MS[day];
     const startMs = clampMs(snap15(slot.startMs), range.start, range.end - 60_000);
@@ -444,7 +466,10 @@ export function FirstRunPicker({
     const totalDays = DAYS.length;
     return (
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-        <DialogContent className="max-w-md gap-0 p-0">
+        <DialogContent
+          ref={dialogScrollRef}
+          className="max-h-[90dvh] max-w-md gap-0 overflow-y-auto p-0"
+        >
           <DialogHeader className="space-y-2 border-b border-border/40 px-5 pb-3 pt-5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
@@ -491,8 +516,16 @@ export function FirstRunPicker({
             </Select>
           </div>
 
-          <div className="flex items-center justify-between gap-2 border-t border-border/40 bg-background/40 px-4 py-3">
-            <div className="flex items-center gap-2">
+          <div className="space-y-2 border-t border-border/40 bg-background/40 px-4 py-3">
+            <Button
+              onClick={commitArrival}
+              disabled={!arrivalDraft}
+              className="w-full"
+              size="lg"
+            >
+              Continue <ChevronRight className="size-4" />
+            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
@@ -518,9 +551,6 @@ export function FirstRunPicker({
                 </Button>
               )}
             </div>
-            <Button onClick={commitArrival} disabled={!arrivalDraft}>
-              Continue <ChevronRight className="size-4" />
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -547,9 +577,6 @@ export function FirstRunPicker({
   const isLastDayLastSlot =
     phase.dayIndex === DAYS.length - 1 &&
     effectiveSlotIndex === totalSteps - 1;
-  const slotPickedCount = currentSlot.artists.filter((a) =>
-    myPickedSet.has(a._id),
-  ).length;
   const slotIsRange =
     currentSlot.kind === "starts" && currentSlot.endStartMs > currentSlot.startMs;
 
@@ -560,7 +587,10 @@ export function FirstRunPicker({
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-        <DialogContent className="max-w-lg gap-0 p-0">
+        <DialogContent
+          ref={dialogScrollRef}
+          className="max-h-[90dvh] max-w-lg gap-0 overflow-y-auto p-0"
+        >
           <DialogHeader className="space-y-2 border-b border-border/40 px-5 pb-3 pt-5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
@@ -603,27 +633,85 @@ export function FirstRunPicker({
             </div>
           </DialogHeader>
 
-          <ScrollArea viewportRef={slotScrollRef} className="max-h-[58vh] px-5">
+          <div className="px-5">
             <div className="space-y-2 py-3">
               {sidequestsAtSlot.length > 0 && (
-                <div className="space-y-1.5 rounded-lg border border-violet-500/30 bg-violet-500/5 p-2.5">
+                <div className="space-y-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-2.5">
                   <div className="text-[10px] font-medium uppercase tracking-wide text-violet-300">
-                    Your sidequests at this time
+                    Sidequests at this time
                   </div>
-                  <ul className="space-y-1">
-                    {sidequestsAtSlot.map((sq) => (
-                      <li
-                        key={sq._id}
-                        className="flex items-center gap-2 text-xs"
-                      >
-                        <span className="truncate font-medium text-violet-200">
-                          {sq.title}
-                        </span>
-                        <span className="ml-auto whitespace-nowrap text-[10px] tabular-nums text-muted-foreground">
-                          {formatTime(sq.startMs)}–{formatTime(sq.endMs)}
-                        </span>
-                      </li>
-                    ))}
+                  <ul className="space-y-1.5">
+                    {sidequestsAtSlot.map((sq) => {
+                      const iJoined =
+                        !!myMemberId &&
+                        sq.participantMemberIds.some((id) => id === myMemberId);
+                      const isCreator =
+                        !!myMemberId && sq.createdByMemberId === myMemberId;
+                      const isBusy = busySidequestId === sq._id;
+                      return (
+                        <li
+                          key={sq._id}
+                          className="flex items-start gap-2 rounded-md border border-violet-500/20 bg-violet-500/10 p-2"
+                        >
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <div className="truncate text-xs font-semibold text-violet-100">
+                              {sq.title}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+                              <span className="tabular-nums">
+                                {formatTime(sq.startMs)}–{formatTime(sq.endMs)}
+                              </span>
+                              {sq.location && (
+                                <span className="inline-flex items-center gap-0.5 truncate">
+                                  <MapPin className="size-2.5 shrink-0" />
+                                  <span className="truncate">{sq.location}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={
+                              !myMemberId ||
+                              offline ||
+                              isBusy ||
+                              (iJoined && isCreator)
+                            }
+                            onClick={() => void toggleSidequestJoin(sq)}
+                            title={
+                              isCreator
+                                ? "You're the creator"
+                                : iJoined
+                                  ? "Leave this sidequest"
+                                  : "Join this sidequest"
+                            }
+                            className={cn(
+                              "inline-flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                              iJoined
+                                ? "bg-violet-500/30 text-violet-100 ring-1 ring-violet-500/60 hover:bg-violet-500/40"
+                                : "border border-dashed border-violet-500/50 bg-violet-500/10 text-violet-200 hover:bg-violet-500/20",
+                            )}
+                          >
+                            {isBusy ? (
+                              <Loader2 className="size-3 animate-spin" />
+                            ) : iJoined ? (
+                              isCreator ? (
+                                <Check className="size-3" />
+                              ) : (
+                                <UserX className="size-3" />
+                              )
+                            ) : (
+                              <UserPlus className="size-3" />
+                            )}
+                            {iJoined
+                              ? isCreator
+                                ? "Hosting"
+                                : "Joined"
+                              : "Join"}
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
@@ -755,10 +843,19 @@ export function FirstRunPicker({
                 <MapPin className="size-3.5 opacity-70" />
               </button>
             </div>
-          </ScrollArea>
+          </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/40 bg-background/40 px-4 py-3">
-            <div className="flex items-center gap-2">
+          <div className="space-y-2 border-t border-border/40 bg-background/40 px-4 py-3">
+            <Button
+              onClick={advanceFromSlot}
+              disabled={offline}
+              className="w-full"
+              size="lg"
+            >
+              {isLastDayLastSlot ? "Done" : "Continue to next"}
+              {!isLastDayLastSlot && <ChevronRight className="size-4" />}
+            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-1">
               <Button variant="ghost" size="sm" onClick={backFromSlot}>
                 Back
               </Button>
@@ -778,28 +875,6 @@ export function FirstRunPicker({
                   Start over
                 </Button>
               )}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => advanceFromSlot(true)}
-                title="Skip this time — handy if you'll arrive later"
-              >
-                Skip this time
-              </Button>
-              <Button
-                onClick={() => advanceFromSlot(false)}
-                disabled={slotPickedCount === 0 || offline}
-                title={
-                  slotPickedCount === 0
-                    ? "Pick at least one artist to continue"
-                    : undefined
-                }
-              >
-                {isLastDayLastSlot ? "Done" : "Continue to next"}
-                {!isLastDayLastSlot && <ChevronRight className="size-4" />}
-              </Button>
             </div>
           </div>
         </DialogContent>

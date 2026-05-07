@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SpotPicker } from "@/components/SpotPicker";
+import { useCachedQuery } from "@/lib/useCachedQuery";
 import { useIsOffline } from "@/lib/useIsOffline";
 import {
   DAY_LABELS,
@@ -71,11 +73,29 @@ export function SidequestDialog({
   const update = useMutation(api.sidequests.update);
   const remove = useMutation(api.sidequests.remove);
   const offline = useIsOffline();
+  const meetupLabels = useCachedQuery(api.meetups.listLabels) ?? [];
+  const sidequestLabels = useCachedQuery(api.sidequests.listLabels) ?? [];
 
   const [draft, setDraft] = useState<SidequestDraft>(mode.defaults);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Combine spot suggestions across both convergence meetups and
+  // existing sidequests so people see every place they've previously
+  // gathered, ranked by combined frequency.
+  const knownLabels = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const { label, count } of meetupLabels) {
+      counts.set(label, (counts.get(label) ?? 0) + count);
+    }
+    for (const { label, count } of sidequestLabels) {
+      counts.set(label, (counts.get(label) ?? 0) + count);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([label]) => label);
+  }, [meetupLabels, sidequestLabels]);
 
   // Reset form whenever the dialog opens (or the underlying mode changes).
   useEffect(() => {
@@ -256,18 +276,16 @@ export function SidequestDialog({
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="sq-location">Location (optional)</Label>
-            <Input
-              id="sq-location"
-              value={draft.location}
-              maxLength={80}
-              placeholder="e.g. Electric Avenue Sign"
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, location: e.target.value }))
-              }
-            />
-          </div>
+          <SpotPicker
+            value={draft.location.trim() ? draft.location : null}
+            onChange={(next) =>
+              setDraft((d) => ({ ...d, location: next ?? "" }))
+            }
+            knownLabels={knownLabels}
+            disabled={offline}
+            disabledReason="Offline — reconnect to change the meet spot"
+            heading="Meet at (optional)"
+          />
 
           <div className="space-y-1.5">
             <Label htmlFor="sq-notes">Notes (optional)</Label>
