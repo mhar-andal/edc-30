@@ -1,8 +1,51 @@
-import { get as idbGet, set as idbSet, createStore } from "idb-keyval";
+import {
+  clear as idbClear,
+  get as idbGet,
+  set as idbSet,
+  createStore,
+} from "idb-keyval";
 
 const store = createStore("edc-offline-cache", "queries");
+const BUILD_ID_KEY = "edc.cache.build-id";
+
+/**
+ * One-shot promise that wipes the IDB query cache when the bundle's
+ * `__BUILD_ID__` differs from the one we last saw. This prevents
+ * "app doesn't load after deploy" symptoms caused by IDB rows whose
+ * shape no longer matches the new client code (e.g. references to
+ * deleted entity IDs, new required fields, removed fields).
+ *
+ * Initialized lazily on first cache access; subsequent calls reuse
+ * the same promise.
+ */
+let initPromise: Promise<void> | null = null;
+function ensureFreshCache(): Promise<void> {
+  if (initPromise) return initPromise;
+  initPromise = (async () => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = window.localStorage.getItem(BUILD_ID_KEY);
+      if (stored !== __BUILD_ID__) {
+        try {
+          await idbClear(store);
+        } catch {
+          /* ignore — IDB unavailable / private browsing */
+        }
+        try {
+          window.localStorage.setItem(BUILD_ID_KEY, __BUILD_ID__);
+        } catch {
+          /* ignore quota errors */
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  })();
+  return initPromise;
+}
 
 export async function loadCached<T>(key: string): Promise<T | undefined> {
+  await ensureFreshCache();
   try {
     return (await idbGet(key, store)) as T | undefined;
   } catch {
@@ -11,6 +54,7 @@ export async function loadCached<T>(key: string): Promise<T | undefined> {
 }
 
 export async function saveCached<T>(key: string, value: T): Promise<void> {
+  await ensureFreshCache();
   try {
     await idbSet(key, value, store);
   } catch {
