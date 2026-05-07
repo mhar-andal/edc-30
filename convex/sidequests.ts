@@ -63,6 +63,28 @@ function normalizeAndValidate(args: {
   return { title, location, notes };
 }
 
+/**
+ * Aggregate every distinct location label across all sidequests with
+ * a usage count. Used by `SpotPicker` to surface previously-used
+ * spots as quick-pick chips alongside the convergence labels and the
+ * built-in defaults.
+ */
+export const listLabels = query({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("sidequests").collect();
+    const counts = new Map<string, number>();
+    for (const s of all) {
+      const label = s.location?.trim();
+      if (!label) continue;
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([label, count]) => ({ label, count }));
+  },
+});
+
 export const listAll = query({
   args: {},
   handler: async (ctx) => {
