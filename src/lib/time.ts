@@ -29,24 +29,32 @@ const ISO_HOUR_FORMATTER = new Intl.DateTimeFormat("en-US", {
   timeZone: LAS_VEGAS_TZ,
 });
 
+function isValidMs(ms: unknown): ms is number {
+  return typeof ms === "number" && Number.isFinite(ms);
+}
+
 export function formatTime(ms: number): string {
+  if (!isValidMs(ms)) return "—";
   return HOUR_MINUTE_FORMATTER.format(new Date(ms))
     .replace(" AM", "am")
     .replace(" PM", "pm");
 }
 
 export function formatHour(ms: number): string {
+  if (!isValidMs(ms)) return "—";
   return HOUR_FORMATTER.format(new Date(ms))
     .replace(" AM", "am")
     .replace(" PM", "pm");
 }
 
 export function localHour(ms: number): number {
+  if (!isValidMs(ms)) return NaN;
   return parseInt(ISO_HOUR_FORMATTER.format(new Date(ms)), 10);
 }
 
 export function isLateNight(ms: number): boolean {
   const h = localHour(ms);
+  if (Number.isNaN(h)) return false;
   return h < 12;
 }
 
@@ -125,6 +133,7 @@ const PDT_OFFSET_HOURS = 7;
 
 /** Returns "HH:MM" suitable for an <input type="time"> in PDT. */
 export function msToTimeInput(ms: number): string {
+  if (!isValidMs(ms)) return "00:00";
   return ISO_TIME_FORMATTER.format(new Date(ms));
 }
 

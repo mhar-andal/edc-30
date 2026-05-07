@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Search, X } from "lucide-react";
+import {
+  CalendarClock,
+  LayoutGrid,
+  Loader2,
+  Plus,
+  Search,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { DesktopGrid } from "@/components/schedule/DesktopGrid";
 import { MobileStageList } from "@/components/schedule/MobileStageList";
-import { CopyFromPersonDialog } from "@/components/schedule/CopyFromPersonDialog";
+import { MyDayTimeline } from "@/components/schedule/MyDayTimeline";
 import { FirstRunPicker } from "@/components/schedule/FirstRunPicker";
 import { SidequestList } from "@/components/sidequests/SidequestList";
 import {
@@ -12,6 +21,11 @@ import {
   snap15,
   type SidequestDraft,
 } from "@/components/sidequests/SidequestDialog";
+import {
+  OnboardingTour,
+  isTourInProgress,
+  markTourSeen,
+} from "@/components/onboarding/OnboardingTour";
 import { useScheduleData } from "@/lib/useScheduleData";
 import { useMemberSession } from "@/lib/useMemberSession";
 import {
@@ -26,6 +40,7 @@ import type { Sidequest } from "@/lib/useScheduleData";
 import { cn } from "@/lib/utils";
 
 type MobileTab = "artists" | "sidequests";
+type ScheduleView = "schedule" | "myday";
 
 interface EditState {
   open: boolean;
@@ -35,7 +50,22 @@ interface EditState {
 }
 
 const DEFAULT_DURATION_MS = 60 * 60 * 1000;
-const FIRST_RUN_STORAGE_KEY = "edc.first-run-picker.shown.v1";
+const FIRST_RUN_STORAGE_PREFIX = "edc.first-run-picker.shown.v1";
+const VIEW_STORAGE_KEY = "edc.schedule-view.v1";
+
+function firstRunStorageKey(memberId: string): string {
+  return `${FIRST_RUN_STORAGE_PREFIX}:${memberId}`;
+}
+
+function loadInitialView(): ScheduleView {
+  try {
+    const v = window.localStorage.getItem(VIEW_STORAGE_KEY);
+    if (v === "myday" || v === "schedule") return v;
+  } catch {
+    /* no-op */
+  }
+  return "schedule";
+}
 
 export default function Schedule() {
   const session = useMemberSession();
@@ -43,14 +73,35 @@ export default function Schedule() {
   const [day, setDay] = useState<DayKey>("day_1");
   const [search, setSearch] = useState("");
   const [mobileTab, setMobileTab] = useState<MobileTab>("artists");
+  const [view, setView] = useState<ScheduleView>(loadInitialView);
   const [editState, setEditState] = useState<EditState | null>(null);
   const [firstRunOpen, setFirstRunOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourResumable, setTourResumable] = useState<boolean>(() =>
+    isTourInProgress(),
+  );
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(VIEW_STORAGE_KEY, view);
+    } catch {
+      /* no-op */
+    }
+  }, [view]);
+
+  // The tour stores its progress in localStorage. Whenever the dialog
+  // opens or closes we re-check the resume flag so the banner reflects
+  // the current state — including the dismissed and completed cases.
+  useEffect(() => {
+    setTourResumable(isTourInProgress());
+  }, [tourOpen]);
 
   const myMemberId = session.status === "authed" ? session.memberId : null;
 
-  // Show the first-run picker once for new users who land on Schedule
-  // with an empty pick list. Persisted in localStorage so it never
-  // re-opens on its own. (Skipping or completing the picker both set
+  // Show the first-run picker once for each new member who lands on
+  // Schedule with an empty pick list. The dismiss flag is keyed by
+  // memberId so multiple accounts on the same browser each get their
+  // own walkthrough. (Skipping or completing the picker both set
   // the flag.)
   useEffect(() => {
     if (data.loading) return;
@@ -58,7 +109,7 @@ export default function Schedule() {
     let alreadyShown = false;
     try {
       alreadyShown =
-        window.localStorage.getItem(FIRST_RUN_STORAGE_KEY) === "1";
+        window.localStorage.getItem(firstRunStorageKey(myMemberId)) === "1";
     } catch {
       /* no-op */
     }
@@ -70,11 +121,22 @@ export default function Schedule() {
 
   function dismissFirstRun() {
     setFirstRunOpen(false);
+    if (!myMemberId) return;
     try {
-      window.localStorage.setItem(FIRST_RUN_STORAGE_KEY, "1");
+      window.localStorage.setItem(firstRunStorageKey(myMemberId), "1");
     } catch {
       /* no-op */
     }
+  }
+
+  function reopenWalkthrough() {
+    if (!myMemberId) return;
+    try {
+      window.localStorage.removeItem(firstRunStorageKey(myMemberId));
+    } catch {
+      /* no-op */
+    }
+    setFirstRunOpen(true);
   }
 
   const matchedArtistIds = useMemo(() => {
@@ -97,30 +159,6 @@ export default function Schedule() {
     () => data.sidequestsByDay.get(day) ?? [],
     [data.sidequestsByDay, day],
   );
-
-  const pickCountForDay = useMemo(() => {
-    return (memberId: Id<"members">) => {
-      const memberPicks = data.selectionsByMember.get(memberId);
-      if (!memberPicks || memberPicks.size === 0) return 0;
-      const dayList = data.artistsByDay.get(day) ?? [];
-      let count = 0;
-      for (const a of dayList) {
-        if (memberPicks.has(a._id)) count++;
-      }
-      return count;
-    };
-  }, [data.selectionsByMember, data.artistsByDay, day]);
-
-  const sidequestCountForDay = useMemo(() => {
-    return (memberId: Id<"members">) => {
-      const list = data.sidequestsByDay.get(day) ?? [];
-      let count = 0;
-      for (const sq of list) {
-        if (sq.participantMemberIds.some((id) => id === memberId)) count++;
-      }
-      return count;
-    };
-  }, [data.sidequestsByDay, day]);
 
   function openCreateSidequest() {
     const range = FESTIVAL_DAY_RANGE_MS[day];
@@ -178,66 +216,106 @@ export default function Schedule() {
   return (
     <div className="space-y-3">
       <div className="mx-auto w-full max-w-7xl space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Tabs value={day} onValueChange={(v) => setDay(v as DayKey)}>
-            <TabsList>
-              {DAYS.map((d) => (
-                <TabsTrigger key={d} value={d}>
-                  <span className="hidden sm:inline">{DAY_LABELS[d].full}</span>
-                  <span className="sm:hidden">
-                    {DAY_LABELS[d].short} {DAY_LABELS[d].date}
-                  </span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+        <ViewSwitcher view={view} onChange={setView} />
 
-          <CopyFromPersonDialog
-            members={data.members}
-            myMemberId={myMemberId}
-            day={day}
-            pickCountForDay={pickCountForDay}
-            sidequestCountForDay={sidequestCountForDay}
-          />
-        </div>
+        <Tabs
+          value={day}
+          onValueChange={(v) => setDay(v as DayKey)}
+          className="w-full"
+        >
+          <TabsList className="grid h-10 w-full grid-cols-3">
+            {DAYS.map((d) => (
+              <TabsTrigger key={d} value={d} className="w-full">
+                <span className="hidden sm:inline">{DAY_LABELS[d].full}</span>
+                <span className="sm:hidden">
+                  {DAY_LABELS[d].short} {DAY_LABELS[d].date}
+                </span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
-        <div className="md:hidden">
-          <div className="flex items-center gap-1 rounded-md border border-border/60 bg-card/40 p-1 text-xs font-medium">
+        {myMemberId && (
+          <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => setMobileTab("artists")}
-              className={cn(
-                "flex-1 rounded px-3 py-1.5 transition-colors",
-                mobileTab === "artists"
-                  ? "bg-secondary text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
+              onClick={reopenWalkthrough}
+              className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border/60 bg-card/40 px-3 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-card/60 hover:text-foreground"
+              title="Open the artist quick-pick walkthrough"
             >
-              Artists
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobileTab("sidequests")}
-              className={cn(
-                "flex-1 rounded px-3 py-1.5 transition-colors",
-                mobileTab === "sidequests"
-                  ? "bg-secondary text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <span className="inline-flex items-center justify-center gap-1.5">
-                Sidequests
-                {daySidequests.length > 0 && (
-                  <span className="rounded-full bg-violet-500/20 px-1.5 text-[10px] font-semibold text-violet-200">
-                    {daySidequests.length}
-                  </span>
-                )}
-              </span>
+              <Sparkles className="size-3" />
+              Quick-pick walkthrough
             </button>
           </div>
-        </div>
+        )}
 
-        {mobileTab === "artists" && (
+        {tourResumable && (
+          <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+            <Sparkles className="size-4 shrink-0 text-primary" />
+            <div className="min-w-0 flex-1 text-xs sm:text-sm">
+              <span className="font-medium">Finish your tour</span>
+              <span className="ml-1.5 text-muted-foreground">
+                Pick up where you left off.
+              </span>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  markTourSeen();
+                  setTourResumable(false);
+                }}
+                aria-label="Dismiss onboarding tour"
+              >
+                <X className="size-3.5" />
+              </Button>
+              <Button size="sm" onClick={() => setTourOpen(true)}>
+                Continue
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {view === "schedule" && (
+          <div className="md:hidden">
+            <div className="flex items-center gap-1 rounded-md border border-border/60 bg-card/40 p-1 text-xs font-medium">
+              <button
+                type="button"
+                onClick={() => setMobileTab("artists")}
+                className={cn(
+                  "flex-1 rounded px-3 py-1.5 transition-colors",
+                  mobileTab === "artists"
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Artists
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileTab("sidequests")}
+                className={cn(
+                  "flex-1 rounded px-3 py-1.5 transition-colors",
+                  mobileTab === "sidequests"
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  Sidequests
+                  {daySidequests.length > 0 && (
+                    <span className="rounded-full bg-violet-500/20 px-1.5 text-[10px] font-semibold text-violet-200">
+                      {daySidequests.length}
+                    </span>
+                  )}
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {view === "schedule" && mobileTab === "artists" && (
           <div className="relative md:block">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -259,7 +337,7 @@ export default function Schedule() {
           </div>
         )}
 
-        {mobileTab === "artists" && search && (
+        {view === "schedule" && mobileTab === "artists" && search && (
           <p className="text-[11px] text-muted-foreground">
             {dayArtists.length === 0
               ? `No matches for "${search}" on ${DAY_LABELS[day].short} ${DAY_LABELS[day].date}.`
@@ -267,42 +345,57 @@ export default function Schedule() {
           </p>
         )}
 
-        <div className="md:hidden">
-          {mobileTab === "artists" ? (
-            <MobileStageList
-              artists={dayArtists}
-              selectionsByArtist={data.selectionsByArtist}
-              membersById={data.membersById}
-              myMemberId={myMemberId}
-              myOverlapsByArtist={data.myOverlapsByArtist}
-              flatten={!!search.trim()}
-            />
-          ) : (
-            <SidequestList
-              sidequests={daySidequests}
-              membersById={data.membersById}
-              myMemberId={myMemberId}
-              onCreate={openCreateSidequest}
-              onEdit={openEditSidequest}
-            />
-          )}
-        </div>
+        {view === "schedule" && (
+          <div className="md:hidden">
+            {mobileTab === "artists" ? (
+              <MobileStageList
+                artists={dayArtists}
+                selectionsByArtist={data.selectionsByArtist}
+                membersById={data.membersById}
+                myMemberId={myMemberId}
+                myOverlapsByArtist={data.myOverlapsByArtist}
+                flatten={!!search.trim()}
+              />
+            ) : (
+              <SidequestList
+                sidequests={daySidequests}
+                membersById={data.membersById}
+                myMemberId={myMemberId}
+                onCreate={openCreateSidequest}
+                onEdit={openEditSidequest}
+              />
+            )}
+          </div>
+        )}
+
+        {view === "myday" && (
+          <MyDayTimeline
+            day={day}
+            data={data}
+            myMemberId={myMemberId}
+            onCreateSidequest={openCreateSidequest}
+            onEditSidequest={openEditSidequest}
+            onOpenWalkthrough={reopenWalkthrough}
+          />
+        )}
       </div>
 
       {/* Desktop calendar breaks out of max-w to use the full viewport. */}
-      <div className="hidden md:block">
-        <DesktopGrid
-          day={day}
-          artists={dayArtists}
-          selectionsByArtist={data.selectionsByArtist}
-          membersById={data.membersById}
-          myMemberId={myMemberId}
-          myOverlapsByArtist={data.myOverlapsByArtist}
-          sidequests={daySidequests}
-        />
-      </div>
+      {view === "schedule" && (
+        <div className="hidden md:block">
+          <DesktopGrid
+            day={day}
+            artists={dayArtists}
+            selectionsByArtist={data.selectionsByArtist}
+            membersById={data.membersById}
+            myMemberId={myMemberId}
+            myOverlapsByArtist={data.myOverlapsByArtist}
+            sidequests={daySidequests}
+          />
+        </div>
+      )}
 
-      {mobileTab === "sidequests" && myMemberId && (
+      {view === "schedule" && mobileTab === "sidequests" && myMemberId && (
         <button
           type="button"
           onClick={openCreateSidequest}
@@ -337,6 +430,86 @@ export default function Schedule() {
         membersById={data.membersById}
         sidequestsByDay={data.sidequestsByDay}
       />
+
+      <OnboardingTour
+        open={tourOpen}
+        onClose={() => setTourOpen(false)}
+      />
+    </div>
+  );
+}
+
+function ViewSwitcher({
+  view,
+  onChange,
+}: {
+  view: ScheduleView;
+  onChange: (next: ScheduleView) => void;
+}) {
+  const options: Array<{
+    value: ScheduleView;
+    label: string;
+    icon: typeof LayoutGrid;
+    hint: string;
+  }> = [
+    {
+      value: "schedule",
+      label: "Schedule",
+      icon: LayoutGrid,
+      hint: "All stages & sidequests",
+    },
+    {
+      value: "myday",
+      label: "My Day",
+      icon: CalendarClock,
+      hint: "Your picks, meetups & sidequests",
+    },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Schedule view"
+      className="grid w-full grid-cols-2 gap-1.5 rounded-xl border border-border/60 bg-gradient-to-b from-card/80 to-card/30 p-1.5 shadow-sm"
+    >
+      {options.map(({ value, label, icon: Icon, hint }) => {
+        const active = value === view;
+        return (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(value)}
+            className={cn(
+              "group relative flex flex-col items-start gap-1 rounded-lg px-3 py-2.5 text-left transition-all sm:py-3",
+              active
+                ? "bg-primary/15 text-foreground ring-1 ring-primary/40 shadow-[inset_0_1px_0_0_rgb(255_255_255/4%)]"
+                : "text-muted-foreground hover:bg-card/60 hover:text-foreground",
+            )}
+          >
+            <span className="flex items-center gap-2">
+              <Icon
+                className={cn(
+                  "size-4 transition-colors sm:size-5",
+                  active ? "text-primary" : "text-muted-foreground group-hover:text-foreground",
+                )}
+              />
+              <span className="text-sm font-semibold leading-tight sm:text-base">
+                {label}
+              </span>
+            </span>
+            <span className="block text-[11px] leading-snug text-muted-foreground sm:text-xs">
+              {hint}
+            </span>
+            {active && (
+              <span
+                aria-hidden
+                className="absolute inset-x-3 bottom-1 h-0.5 rounded-full bg-primary/70"
+              />
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

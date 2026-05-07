@@ -1,10 +1,19 @@
-import { useState } from "react";
-import { ChevronLeft, Clock, MapPin, Plus, Sparkles, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  CalendarClock,
+  ChevronLeft,
+  Clock,
+  MapPin,
+  Plus,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const TOUR_KEY = "edc.tour.seen.v1";
+const TOUR_STEP_KEY = "edc.tour.step.v1";
 
 export function hasSeenTour(): boolean {
   if (typeof window === "undefined") return true;
@@ -14,6 +23,18 @@ export function hasSeenTour(): boolean {
 export function markTourSeen(): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(TOUR_KEY, "1");
+  window.localStorage.removeItem(TOUR_STEP_KEY);
+}
+
+export function isTourInProgress(): boolean {
+  if (typeof window === "undefined") return false;
+  if (hasSeenTour()) return false;
+  return window.localStorage.getItem(TOUR_STEP_KEY) !== null;
+}
+
+export function restartTour(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(TOUR_STEP_KEY);
 }
 
 interface Step {
@@ -25,17 +46,17 @@ interface Step {
 const STEPS: Step[] = [
   {
     title: "Coordinate your EDC weekend",
-    body: "Pick the sets you want to see, share with friends, and find natural meetup points between sets.",
+    body: "Pick the sets you want to see, plan side activities with friends, and find natural meetup moments along the way.",
     visual: <HeroVisual />,
   },
   {
-    title: "Pick what you want to see",
-    body: "Tap a set to add it to your picks. Tap again to remove it.",
-    visual: <PickVisual />,
+    title: "Plan it in minutes with Quick pick",
+    body: "Tell us when you'll arrive each day, then we walk you through ~30-minute windows. Pick anyone you'd catch in that block — pick two if you want to do half-and-half. Exit any time and pick up where you left off.",
+    visual: <QuickPickVisual />,
   },
   {
-    title: "See who's going with you",
-    body: "Your friends' picks appear next to yours on every set — color-coded by person.",
+    title: "Pick sets — see who's going",
+    body: "Tap a set to add it to your picks. Friends' picks appear color-coded next to yours on every set, so you can see who's heading where.",
     visual: <PeopleVisual />,
   },
   {
@@ -44,14 +65,14 @@ const STEPS: Step[] = [
     visual: <OverlapVisual />,
   },
   {
-    title: "Find meetup moments",
-    body: "When you and a friend are at different stages but heading to the same one next, we surface a meetup window. Set a stage or a custom spot — anyone can edit.",
-    visual: <MeetupVisual />,
+    title: "Your day on a single timeline",
+    body: "Switch to My Day to see your picks, joined meetups, and any sidequests (food runs, art cars, rest breaks) laid out as a single column timeline.",
+    visual: <MyDayVisual />,
   },
   {
-    title: "Copy a friend's picks",
-    body: "If a friend already mapped out their night, copy their picks as a starting point and tweak from there.",
-    visual: <CopyVisual />,
+    title: "Find meetup moments",
+    body: "When friends split between stages but converge on the same set next, we surface a meetup window on Coordinate. Pick a spot and a gather → leave time so everyone knows when to roll.",
+    visual: <MeetupVisual />,
   },
 ];
 
@@ -60,18 +81,51 @@ interface Props {
   onClose: () => void;
 }
 
+function readSavedStep(): number {
+  if (typeof window === "undefined") return 0;
+  const raw = window.localStorage.getItem(TOUR_STEP_KEY);
+  if (!raw) return 0;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(Math.max(n, 0), STEPS.length - 1);
+}
+
+function saveStep(step: number): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(TOUR_STEP_KEY, String(step));
+}
+
 export function OnboardingTour({ open, onClose }: Props) {
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState<number>(() => readSavedStep());
   const isLast = step === STEPS.length - 1;
   const isFirst = step === 0;
 
-  function close() {
+  // When the dialog opens, sync to whatever step is currently saved (so a
+  // user who left the tour at step 3 in onboarding resumes at step 3 from
+  // the schedule resume banner).
+  useEffect(() => {
+    if (open) setStep(readSavedStep());
+  }, [open]);
+
+  // Persist progress whenever the step changes while the tour is open. We
+  // only treat the tour as "completed" when the user actually reaches the
+  // end and presses "Let's go" — early dismissals leave the saved step in
+  // place so we can show a resume entry point on the schedule.
+  useEffect(() => {
+    if (!open) return;
+    saveStep(step);
+  }, [open, step]);
+
+  function dismiss() {
+    onClose();
+  }
+  function complete() {
     markTourSeen();
     setStep(0);
     onClose();
   }
   function next() {
-    if (isLast) close();
+    if (isLast) complete();
     else setStep((s) => s + 1);
   }
   function back() {
@@ -84,18 +138,20 @@ export function OnboardingTour({ open, onClose }: Props) {
     <Dialog
       open={open}
       onOpenChange={(o) => {
-        if (!o) close();
+        if (!o) dismiss();
       }}
     >
       <DialogContent className="w-[calc(100vw-1.5rem)] max-w-md overflow-hidden border-border/60 bg-card p-0 sm:rounded-2xl">
-        <button
+        <Button
           type="button"
-          onClick={close}
-          className="absolute right-3 top-3 z-10 grid size-8 place-items-center rounded-full bg-background/60 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-          aria-label="Skip tour"
+          variant="ghost"
+          size="icon"
+          onClick={dismiss}
+          className="absolute right-2 top-2 z-10 size-8 rounded-full bg-background/80 text-muted-foreground shadow-sm ring-1 ring-border/40 backdrop-blur hover:bg-background hover:text-foreground"
+          aria-label="Close tour"
         >
-          <X className="size-4" />
-        </button>
+          <X className="size-3.5" />
+        </Button>
 
         <div className="relative flex h-44 items-center justify-center overflow-hidden bg-gradient-to-br from-rose-500/15 via-fuchsia-500/15 to-cyan-500/15 sm:h-56">
           {current.visual}
@@ -126,17 +182,19 @@ export function OnboardingTour({ open, onClose }: Props) {
           ))}
         </div>
 
-        <div className="flex items-center gap-2 border-t border-border/40 bg-background/40 p-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={back}
-            disabled={isFirst}
-            aria-label="Previous"
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <Button onClick={next} className="flex-1">
+        <div
+          className={cn(
+            "flex items-center gap-2 border-t border-border/40 bg-background/40 p-3",
+            isFirst ? "justify-end" : "justify-between",
+          )}
+        >
+          {!isFirst && (
+            <Button variant="ghost" size="sm" onClick={back}>
+              <ChevronLeft className="size-4" />
+              Back
+            </Button>
+          )}
+          <Button onClick={next} size="sm" className="min-w-[6rem]">
             {isLast ? "Let's go" : "Next"}
           </Button>
         </div>
@@ -162,14 +220,107 @@ function HeroVisual() {
   );
 }
 
-function PickVisual() {
+function QuickPickVisual() {
   return (
-    <div className="flex w-full max-w-[260px] flex-col gap-2 px-4">
-      <MockArtistCard stage="Cosmic Meadow" name="Sub Focus" status="add" />
-      <div className="text-center text-[10px] uppercase tracking-wide text-muted-foreground">
-        tap →
+    <div className="w-full max-w-[260px] px-4">
+      <div className="overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-sm">
+        <div className="flex items-center justify-between gap-2 border-b border-border/40 px-3 py-2">
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+            <Sparkles className="size-2.5" />
+            Quick pick
+          </span>
+          <span className="text-[9px] tabular-nums text-muted-foreground">
+            Fri · 3 / 6
+          </span>
+        </div>
+        <div className="space-y-1.5 px-3 py-2">
+          <div className="text-[11px] font-semibold leading-tight">
+            Friday · 11:15pm – 11:30pm
+          </div>
+          <div className="text-[9px] leading-tight text-muted-foreground">
+            These sets all start within ~30 minutes — pick anyone you&apos;d
+            catch.
+          </div>
+          <div className="space-y-1 pt-0.5">
+            <MockArtistCard
+              stage="Kinetic Field"
+              name="Sofi Tukker"
+              status="picked"
+            />
+            <MockArtistCard stage="Basspod" name="Levity" status="add" />
+          </div>
+        </div>
       </div>
-      <MockArtistCard stage="Cosmic Meadow" name="Sub Focus" status="picked" />
+    </div>
+  );
+}
+
+function MyDayVisual() {
+  return (
+    <div className="flex w-full max-w-[260px] flex-col gap-1.5 px-4">
+      <div className="mb-0.5 inline-flex w-fit items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+        <CalendarClock className="size-2.5" />
+        My Day · Friday
+      </div>
+      <MyDayRow
+        time="9pm"
+        label="Hardwell"
+        sublabel="Kinetic Field"
+        rgb="244 63 94"
+      />
+      <MyDayRow
+        time="9:50"
+        label="Meet · Electric Avenue"
+        sublabel="with Alex, Sam"
+        rgb="16 185 129"
+      />
+      <MyDayRow
+        time="10pm"
+        label="Subtronics"
+        sublabel="Cosmic Meadow"
+        rgb="132 204 22"
+      />
+      <MyDayRow
+        time="11pm"
+        label="Sidequest · Food run"
+        sublabel="Sushi pop-up"
+        rgb="139 92 246"
+      />
+    </div>
+  );
+}
+
+function MyDayRow({
+  time,
+  label,
+  sublabel,
+  rgb,
+}: {
+  time: string;
+  label: string;
+  sublabel: string;
+  rgb: string;
+}) {
+  return (
+    <div className="grid grid-cols-[2.25rem_1fr] items-start gap-2">
+      <span className="pt-0.5 text-right text-[9px] tabular-nums text-muted-foreground">
+        {time}
+      </span>
+      <div
+        className="rounded-md border px-2 py-1 leading-tight"
+        style={{
+          backgroundColor: `rgb(${rgb} / 0.18)`,
+          borderColor: `rgb(${rgb} / 0.45)`,
+        }}
+      >
+        <div
+          className="text-[10px] font-semibold"
+          style={{ color: `rgb(${rgb})` }}
+        >
+          {label}
+        </div>
+        <div className="text-[9px] text-muted-foreground">{sublabel}</div>
+      </div>
     </div>
   );
 }
@@ -211,7 +362,7 @@ function MeetupVisual() {
     <div className="w-full max-w-[260px] px-4">
       <div className="rounded-xl border border-border/60 bg-card/80 p-3">
         <div className="flex items-center justify-between gap-2 text-[11px] font-semibold tabular-nums">
-          <span className="whitespace-nowrap">9:45 – 10:15pm</span>
+          <span className="whitespace-nowrap">Gather 9:50 – 10:00pm</span>
           <span
             className="inline-flex items-center gap-1 truncate rounded-full px-1.5 py-0.5 text-[10px]"
             style={{
@@ -223,7 +374,7 @@ function MeetupVisual() {
               className="size-1 shrink-0 rounded-full"
               style={{ backgroundColor: "rgb(244 63 94)" }}
             />
-            Kinetic Field
+            → Kinetic Field
           </span>
         </div>
         <div className="mt-2 flex items-center gap-1.5">
@@ -238,22 +389,10 @@ function MeetupVisual() {
           </span>
           <span className="inline-flex items-center gap-1 rounded-md bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-sky-200 ring-1 ring-sky-500/40">
             <Clock className="size-2.5" />
-            10 – 10:15pm
+            10 min window
           </span>
         </div>
       </div>
-    </div>
-  );
-}
-
-function CopyVisual() {
-  return (
-    <div className="flex w-full max-w-[260px] items-center justify-center gap-3 px-4">
-      <MockChip name="Alex" color="#fb7185" />
-      <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
-        copy →
-      </span>
-      <MockChip name="You" color="#22d3ee" />
     </div>
   );
 }

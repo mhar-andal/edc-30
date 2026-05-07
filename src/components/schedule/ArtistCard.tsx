@@ -313,10 +313,22 @@ function AttendeesStrip({
   myMemberId: Id<"members"> | null;
 }) {
   const [overflows, setOverflows] = useState(false);
+  const firstSetRef = useRef<HTMLDivElement | null>(null);
+  const secondSetRef = useRef<HTMLDivElement | null>(null);
   const ref = useAutoScroll<HTMLDivElement>({
     endBehavior: overflows ? "loop" : "reset",
+    // The two copies are separated by the outer `gap-1` (4px), so
+    // `scrollWidth / 2` is ~2px short of the true seamless wrap point.
+    // Measuring the second copy's position gives a pixel-accurate loop
+    // distance and eliminates the visible jitter on every cycle — most
+    // obvious on narrow mobile rows with just a few attendees.
+    getLoopWidth: () => {
+      const first = firstSetRef.current;
+      const second = secondSetRef.current;
+      if (!first || !second) return null;
+      return second.offsetLeft - first.offsetLeft;
+    },
   });
-  const firstSetRef = useRef<HTMLDivElement | null>(null);
 
   const chips = pickedByMemberIds
     .map((mid) => {
@@ -364,6 +376,7 @@ function AttendeesStrip({
       </div>
       {overflows && (
         <div
+          ref={secondSetRef}
           aria-hidden
           className="flex shrink-0 items-center gap-1"
         >

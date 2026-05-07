@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Compass, Loader2, MapPin, Sparkles } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -18,14 +19,63 @@ import {
 
 type Mode = "mine" | "everyone";
 
+function dayFromFocusKey(focusKey: string | null): DayKey | null {
+  if (!focusKey) return null;
+  const head = focusKey.split("|")[0];
+  if (head === "day_1" || head === "day_2" || head === "day_3") return head;
+  return null;
+}
+
 export default function Coordinate() {
   const session = useMemberSession();
   const data = useScheduleData();
   const allMeetups = useCachedQuery(api.meetups.listAll) ?? [];
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusKey = searchParams.get("focus");
 
   const myMemberId = session.status === "authed" ? session.memberId : null;
-  const [day, setDay] = useState<DayKey>("day_1");
+  const [day, setDay] = useState<DayKey>(
+    () => dayFromFocusKey(focusKey) ?? "day_1",
+  );
   const [mode, setMode] = useState<Mode>("mine");
+  const [highlightedKey, setHighlightedKey] = useState<string | null>(focusKey);
+  const hasFocusedRef = useRef(false);
+
+  // When the URL focus param changes (e.g. user clicks "Open Coordinate"
+  // again from a different meetup) re-arm the highlight + jump.
+  useEffect(() => {
+    hasFocusedRef.current = false;
+    setHighlightedKey(focusKey);
+    const focusDay = dayFromFocusKey(focusKey);
+    if (focusDay) setDay(focusDay);
+  }, [focusKey]);
+
+  // Once data is loaded and the focused card is in the DOM, scroll
+  // it into view, then drop the highlight + clear the URL after a
+  // short pulse so refreshes don't re-trigger it forever.
+  useEffect(() => {
+    if (!focusKey) return;
+    if (data.loading) return;
+    if (hasFocusedRef.current) return;
+    const target = document.querySelector<HTMLElement>(
+      `[data-meetup-key="${CSS.escape(focusKey)}"]`,
+    );
+    if (!target) return;
+    hasFocusedRef.current = true;
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    const fadeId = window.setTimeout(() => {
+      setHighlightedKey(null);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("focus");
+          return next;
+        },
+        { replace: true },
+      );
+    }, 2400);
+    return () => window.clearTimeout(fadeId);
+  }, [focusKey, data.loading, day, mode, setSearchParams]);
 
   const journeys = useMemo(() => {
     return data.members
@@ -45,6 +95,35 @@ export default function Coordinate() {
     if (!myMemberId) return [] as Convergence[];
     return allConvergences.filter((c) => c.memberIds.includes(myMemberId));
   }, [allConvergences, myMemberId]);
+
+  // If a focus key targets a convergence the user isn't part of, fall
+  // through to "everyone" mode so the highlighted card actually renders.
+  useEffect(() => {
+    if (!focusKey) return;
+    if (mode !== "mine") return;
+    if (myConvergences.some((c) => {
+      const key = meetupKey(
+        c.day,
+        c.windowStart,
+        c.windowEnd,
+        c.destinationStage,
+      );
+      return key === focusKey;
+    })) {
+      return;
+    }
+    if (allConvergences.some((c) => {
+      const key = meetupKey(
+        c.day,
+        c.windowStart,
+        c.windowEnd,
+        c.destinationStage,
+      );
+      return key === focusKey;
+    })) {
+      setMode("everyone");
+    }
+  }, [focusKey, mode, myConvergences, allConvergences]);
 
   const visibleConvergences =
     mode === "mine" ? myConvergences : allConvergences;
@@ -111,6 +190,7 @@ export default function Coordinate() {
         membersById={data.membersById}
         meetupsByKey={meetupsByKey}
         day={day}
+        highlightedKey={highlightedKey}
         onSwitchToEveryone={() => setMode("everyone")}
         onSwitchToMine={() => setMode("mine")}
       />
@@ -128,6 +208,7 @@ function Body({
   membersById,
   meetupsByKey,
   day,
+  highlightedKey,
   onSwitchToEveryone,
   onSwitchToMine,
 }: {
@@ -140,6 +221,7 @@ function Body({
   membersById: Map<string, import("../../convex/_generated/dataModel").Doc<"members">>;
   meetupsByKey: Map<string, import("../../convex/_generated/dataModel").Doc<"meetups">>;
   day: DayKey;
+  highlightedKey: string | null;
   onSwitchToEveryone: () => void;
   onSwitchToMine: () => void;
 }) {
@@ -219,6 +301,7 @@ function Body({
               meetupsByKey={meetupsByKey}
               myMemberId={myMemberId}
               meetupKey={key}
+              highlighted={key === highlightedKey}
             />
           );
         })}

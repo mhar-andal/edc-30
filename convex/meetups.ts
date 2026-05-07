@@ -74,7 +74,11 @@ export const setSpot = mutation({
       .first();
 
     if (existing) {
-      if (!trimmed && existing.meetMs === undefined) {
+      if (
+        !trimmed &&
+        existing.meetMs === undefined &&
+        existing.meetEndMs === undefined
+      ) {
         await ctx.db.delete(existing._id);
         return;
       }
@@ -97,9 +101,12 @@ export const setSpot = mutation({
 });
 
 /**
- * Set or clear the agreed meeting moment for a convergence. The
- * value is clamped to `[windowStartMs, windowEndMs]` defensively.
- * If clearing leaves the row empty, it is deleted.
+ * Set or clear the agreed meet window for a convergence. `meetMs`
+ * is when the group gathers at the spot; `meetEndMs` is when they
+ * leave for the destination. Both are optional. Values are clamped
+ * to `[windowStartMs, windowEndMs]` defensively, and `meetEndMs`
+ * cannot precede `meetMs`. If clearing leaves the row empty (no
+ * label and no times), the row is deleted.
  */
 export const setMeetTime = mutation({
   args: {
@@ -108,15 +115,22 @@ export const setMeetTime = mutation({
     windowEndMs: v.number(),
     destinationStage: v.string(),
     meetMs: v.optional(v.number()),
+    meetEndMs: v.optional(v.number()),
   },
   handler: async (
     ctx,
-    { day, windowStartMs, windowEndMs, destinationStage, meetMs },
+    { day, windowStartMs, windowEndMs, destinationStage, meetMs, meetEndMs },
   ) => {
-    const clamped =
+    const clampedStart =
       meetMs === undefined
         ? undefined
         : Math.min(Math.max(meetMs, windowStartMs), windowEndMs);
+    // An end without a start doesn't make sense — drop it.
+    const clampedEnd =
+      meetEndMs === undefined || clampedStart === undefined
+        ? undefined
+        : Math.min(Math.max(meetEndMs, clampedStart), windowEndMs);
+
     const existing = await ctx.db
       .query("meetups")
       .withIndex("by_window_stage", (q) =>
@@ -130,23 +144,29 @@ export const setMeetTime = mutation({
 
     if (existing) {
       const remainingLabel = existing.label?.trim();
-      if (clamped === undefined && !remainingLabel) {
+      if (
+        clampedStart === undefined &&
+        clampedEnd === undefined &&
+        !remainingLabel
+      ) {
         await ctx.db.delete(existing._id);
         return;
       }
       await ctx.db.patch(existing._id, {
-        meetMs: clamped,
+        meetMs: clampedStart,
+        meetEndMs: clampedEnd,
         editedAt: Date.now(),
       });
       return existing._id;
     }
-    if (clamped === undefined) return;
+    if (clampedStart === undefined && clampedEnd === undefined) return;
     return await ctx.db.insert("meetups", {
       day,
       windowStartMs,
       windowEndMs,
       destinationStage,
-      meetMs: clamped,
+      meetMs: clampedStart,
+      meetEndMs: clampedEnd,
       editedAt: Date.now(),
     });
   },

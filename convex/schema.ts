@@ -42,11 +42,17 @@ export default defineSchema({
     /** Chosen meeting-spot label, e.g. "Electric Avenue Sign". */
     label: v.optional(v.string()),
     /**
-     * Specific moment within the convergence window everyone has
-     * agreed to converge at. Optional — without it, the meetup is
-     * "anytime in this window".
+     * Start of the agreed meet window. Optional — without it, the
+     * meetup is "anytime in this window". When set, this is when
+     * everyone is gathering at the spot.
      */
     meetMs: v.optional(v.number()),
+    /**
+     * End of the agreed meet window — when the group leaves the spot
+     * for the destination stage. Optional and meaningful only when
+     * `meetMs` is also set.
+     */
+    meetEndMs: v.optional(v.number()),
     editedAt: v.number(),
   })
     .index("by_day", ["day"])
