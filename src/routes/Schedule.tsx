@@ -423,6 +423,7 @@ export default function Schedule() {
       <FirstRunPicker
         open={firstRunOpen}
         onClose={dismissFirstRun}
+        currentDay={day}
         myMemberId={myMemberId}
         artistsByDay={data.artistsByDay}
         selectionsByMember={data.selectionsByMember}

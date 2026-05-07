@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArtistCard } from "./ArtistCard";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { STAGE_NAMES, getStagePalette } from "@/lib/colors";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { formatTime, isLateNight } from "@/lib/time";
 import type { Artist, Member } from "@/lib/useScheduleData";
-import { cn } from "@/lib/utils";
 
 interface Props {
   artists: Artist[];
@@ -12,21 +18,9 @@ interface Props {
   membersById: Map<string, Member>;
   myMemberId: Id<"members"> | null;
   myOverlapsByArtist: Map<string, Artist[]>;
-  /** When true, ignore the stage rail and show a flat chronological list across all stages. */
+  /** When true, ignore the stage selector and show a flat chronological list across all stages. */
   flatten?: boolean;
 }
-
-const STAGE_LABELS: Record<string, string> = {
-  "Kinetic Field": "Kinetic",
-  "Circuit Grounds": "Circuit",
-  "Cosmic Meadow": "Cosmic",
-  Basspod: "Basspod",
-  "Neon Garden": "Neon",
-  "Quantum Valley": "Quantum",
-  Stereobloom: "Stereo",
-  Wasteland: "Wasteland",
-  "Bionic Jungle": "Bionic",
-};
 
 export function MobileStageList({
   artists,
@@ -106,58 +100,53 @@ export function MobileStageList({
   const palette = getStagePalette(stage);
 
   return (
-    <div className="flex gap-2">
-      <nav
-        aria-label="Stages"
-        className="sticky top-14 flex h-fit w-20 shrink-0 flex-col gap-0.5 self-start rounded-lg border border-border/60 bg-card/30 p-1"
-      >
-        {visibleStages.map((s) => {
-          const p = getStagePalette(s);
-          const active = stage === s;
-          const dim = !active && (countsByStage.get(s) ?? 0) === 0;
-          return (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setStage(s)}
-              className={cn(
-                "flex items-center gap-1.5 rounded px-2 py-1 text-left text-[11px] font-medium leading-tight transition-colors",
-                active
-                  ? "bg-secondary/70"
-                  : dim
-                    ? "text-muted-foreground/50"
-                    : "text-muted-foreground hover:bg-secondary/30 hover:text-foreground",
-              )}
-              style={{
-                color: active ? `rgb(${p.rgb})` : undefined,
-              }}
-            >
-              <span
-                className="size-1.5 shrink-0 rounded-full"
-                style={{ backgroundColor: `rgb(${p.rgb})` }}
-              />
-              <span className="min-w-0 flex-1 truncate">
-                {STAGE_LABELS[s] ?? s}
-              </span>
-            </button>
-          );
-        })}
-      </nav>
-
-      <div className="min-w-0 flex-1 space-y-1.5">
-        <div
-          className="flex items-center gap-2 rounded-md px-2 py-1 text-xs font-semibold"
+    <div className="space-y-2">
+      <Select value={stage} onValueChange={setStage}>
+        <SelectTrigger
+          aria-label="Stage"
+          className="h-10 w-full border-border/60 bg-card/40 font-medium"
           style={{
             color: `rgb(${palette.rgb})`,
-            backgroundColor: `rgb(${palette.rgb} / 0.12)`,
           }}
         >
-          <span
-            className="size-2 rounded-full"
-            style={{ backgroundColor: `rgb(${palette.rgb})` }}
-          />
-          {stage}
-        </div>
+          <SelectValue>
+            <span className="inline-flex items-center gap-2">
+              <span
+                aria-hidden
+                className="size-2 shrink-0 rounded-full"
+                style={{ backgroundColor: `rgb(${palette.rgb})` }}
+              />
+              <span className="truncate">{stage}</span>
+              <span className="text-[11px] font-normal text-muted-foreground tabular-nums">
+                · {countsByStage.get(stage) ?? 0}
+              </span>
+            </span>
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {visibleStages.map((s) => {
+            const p = getStagePalette(s);
+            const count = countsByStage.get(s) ?? 0;
+            return (
+              <SelectItem key={s} value={s}>
+                <span className="inline-flex items-center gap-2">
+                  <span
+                    aria-hidden
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: `rgb(${p.rgb})` }}
+                  />
+                  <span style={{ color: `rgb(${p.rgb})` }}>{s}</span>
+                  <span className="text-[11px] text-muted-foreground tabular-nums">
+                    {count}
+                  </span>
+                </span>
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+
+      <div className="min-w-0 space-y-1.5">
         {stageArtists.length === 0 ? (
           <div className="rounded-md border border-dashed border-border/60 p-4 text-center text-sm text-muted-foreground">
             No sets on {stage}.
@@ -177,17 +166,17 @@ export function MobileStageList({
                     {isLateNight(a.endMs) && a.crossesMidnight ? "+" : ""}
                   </span>
                 </div>
-              <ArtistCard
-                artist={a}
-                pickedByMemberIds={picked}
-                membersById={membersById}
-                myMemberId={myMemberId}
-                myOverlapping={myOverlapsByArtist.get(a._id)}
-                dayArtists={artists}
-                selectionsByArtist={selectionsByArtist}
-                showTime={false}
-                className="flex-1"
-              />
+                <ArtistCard
+                  artist={a}
+                  pickedByMemberIds={picked}
+                  membersById={membersById}
+                  myMemberId={myMemberId}
+                  myOverlapping={myOverlapsByArtist.get(a._id)}
+                  dayArtists={artists}
+                  selectionsByArtist={selectionsByArtist}
+                  showTime={false}
+                  className="flex-1"
+                />
               </div>
             );
           })
