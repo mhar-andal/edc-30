@@ -7,7 +7,6 @@ import {
   Loader2,
   MapPin,
   Plus,
-  RotateCcw,
   Sparkles,
   UserPlus,
   UserX,
@@ -53,6 +52,9 @@ import { cn } from "@/lib/utils";
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** The day the user is currently viewing in Schedule. The picker
+   *  enters at this day's arrival step every time it opens. */
+  currentDay: DayKey;
   myMemberId: Id<"members"> | null;
   artistsByDay: Map<DayKey, Artist[]>;
   selectionsByMember: Map<string, Set<string>>;
@@ -89,43 +91,10 @@ const DEFAULT_SIDEQUEST_DURATION_MS = 60 * 60 * 1000;
  * half of B" in one decision instead of two.
  */
 const SLOT_GROUP_WINDOW_MS = 30 * 60 * 1000;
-const PROGRESS_STORAGE_PREFIX = "edc.first-run-picker.progress.v1";
 
-interface SavedProgress {
-  arrivalsByDay: Record<string, number>;
-  phase: Phase;
-}
-
-function progressKey(memberId: string): string {
-  return `${PROGRESS_STORAGE_PREFIX}:${memberId}`;
-}
-
-function loadProgress(memberId: string): SavedProgress | null {
-  try {
-    const raw = window.localStorage.getItem(progressKey(memberId));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as SavedProgress;
-    if (!parsed || typeof parsed !== "object") return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function persistProgress(memberId: string, progress: SavedProgress) {
-  try {
-    window.localStorage.setItem(progressKey(memberId), JSON.stringify(progress));
-  } catch {
-    /* no-op */
-  }
-}
-
-function clearProgress(memberId: string) {
-  try {
-    window.localStorage.removeItem(progressKey(memberId));
-  } catch {
-    /* no-op */
-  }
+function dayIndexOf(day: DayKey): number {
+  const idx = DAYS.indexOf(day);
+  return idx === -1 ? 0 : idx;
 }
 
 /**
@@ -154,6 +123,7 @@ const DEFAULT_ARRIVAL_VALUE = "19:00"; // 7:00pm — typical festival start
 export function FirstRunPicker({
   open,
   onClose,
+  currentDay,
   myMemberId,
   artistsByDay,
   selectionsByMember,
@@ -168,7 +138,10 @@ export function FirstRunPicker({
   const [busyArtistId, setBusyArtistId] = useState<Id<"artists"> | null>(null);
   const [busySidequestId, setBusySidequestId] =
     useState<Id<"sidequests"> | null>(null);
-  const [phase, setPhase] = useState<Phase>({ kind: "arrival", dayIndex: 0 });
+  const [phase, setPhase] = useState<Phase>(() => ({
+    kind: "arrival",
+    dayIndex: dayIndexOf(currentDay),
+  }));
   const [arrivalDraft, setArrivalDraft] = useState<string>("");
   const [arrivalsByDay, setArrivalsByDay] = useState<Map<DayKey, number>>(
     () => new Map(),
@@ -177,79 +150,32 @@ export function FirstRunPicker({
     open: boolean;
     defaults: SidequestDraft;
   } | null>(null);
-  const [resumed, setResumed] = useState(false);
-  const justOpenedRef = useRef(false);
   // Ref to the scrollable DialogContent element. We scroll the whole
   // dialog (rather than an inner ScrollArea) on every phase change so
   // the next step always starts at the top.
   const dialogScrollRef = useRef<HTMLDivElement>(null);
+  // Track currentDay without retriggering the open-reset effect when
+  // it changes mid-flow (which shouldn't happen since the modal
+  // blocks the day tabs, but better safe than sorry).
+  const currentDayRef = useRef(currentDay);
+  useEffect(() => {
+    currentDayRef.current = currentDay;
+  }, [currentDay]);
 
-  // On open: try to restore saved progress so the user lands back at
-  // the step they left. Falls back to a fresh run when there's no
-  // member id (shouldn't happen at this point) or no saved state.
+  // On open: always enter at the arrival step for the day the user is
+  // currently viewing. We don't restore stale mid-flow progress —
+  // the entry point is whatever day the user just clicked from.
   useEffect(() => {
     if (!open) return;
-    justOpenedRef.current = true;
-    if (!myMemberId) {
-      setPhase({ kind: "arrival", dayIndex: 0 });
-      setArrivalsByDay(new Map());
-      setResumed(false);
-      return;
-    }
-    const saved = loadProgress(myMemberId);
-    if (
-      saved &&
-      saved.phase &&
-      ((saved.phase.kind === "arrival" &&
-        saved.phase.dayIndex >= 0 &&
-        saved.phase.dayIndex < DAYS.length) ||
-        (saved.phase.kind === "slot" &&
-          saved.phase.dayIndex >= 0 &&
-          saved.phase.dayIndex < DAYS.length))
-    ) {
-      const arrivalsMap = new Map<DayKey, number>();
-      for (const [k, v] of Object.entries(saved.arrivalsByDay ?? {})) {
-        if (k === "day_1" || k === "day_2" || k === "day_3") {
-          if (typeof v === "number" && Number.isFinite(v)) arrivalsMap.set(k, v);
-        }
-      }
-      setArrivalsByDay(arrivalsMap);
-      setPhase(saved.phase);
-      setResumed(saved.phase.kind !== "arrival" || saved.phase.dayIndex !== 0);
-    } else {
-      setPhase({ kind: "arrival", dayIndex: 0 });
-      setArrivalsByDay(new Map());
-      setResumed(false);
-    }
-  }, [open, myMemberId]);
-
-  // Persist progress on every state transition while the dialog is
-  // open, but skip the very first effect cycle right after opening so
-  // we don't immediately overwrite the freshly-loaded snapshot with
-  // the in-flight render state.
-  useEffect(() => {
-    if (!open || !myMemberId) return;
-    if (justOpenedRef.current) {
-      justOpenedRef.current = false;
-      return;
-    }
-    const arrivals: Record<string, number> = {};
-    for (const [k, v] of arrivalsByDay) arrivals[k] = v;
-    persistProgress(myMemberId, { arrivalsByDay: arrivals, phase });
-  }, [open, myMemberId, phase, arrivalsByDay]);
+    setPhase({ kind: "arrival", dayIndex: dayIndexOf(currentDayRef.current) });
+    setArrivalsByDay(new Map());
+  }, [open]);
 
   // Seed the arrival input each time we land on the arrival phase.
   useEffect(() => {
     if (phase.kind !== "arrival") return;
     setArrivalDraft(DEFAULT_ARRIVAL_VALUE);
   }, [phase]);
-
-  // Once the user starts interacting with the slot phase, drop the
-  // "Resumed" hint chip — they're past the welcome-back moment.
-  useEffect(() => {
-    if (!resumed) return;
-    if (phase.kind === "arrival" && phase.dayIndex === 0) setResumed(false);
-  }, [resumed, phase]);
 
   // Reset the dialog's scroll position to the top whenever we land
   // on a new step. The dialog itself owns the scroll context now,
@@ -370,15 +296,7 @@ export function FirstRunPicker({
   }
 
   function complete() {
-    if (myMemberId) clearProgress(myMemberId);
     onClose();
-  }
-
-  function startOver() {
-    if (myMemberId) clearProgress(myMemberId);
-    setArrivalsByDay(new Map());
-    setPhase({ kind: "arrival", dayIndex: 0 });
-    setResumed(false);
   }
 
   function backFromSlot() {
@@ -472,17 +390,9 @@ export function FirstRunPicker({
         >
           <DialogHeader className="space-y-2 border-b border-border/40 px-5 pb-3 pt-5">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-medium text-primary">
-                  <Sparkles className="size-3" />
-                  Quick pick
-                </div>
-                {resumed && (
-                  <div className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/30">
-                    <RotateCcw className="size-2.5" />
-                    Resumed
-                  </div>
-                )}
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-medium text-primary">
+                <Sparkles className="size-3" />
+                Quick pick
               </div>
               <span className="text-[11px] tabular-nums text-muted-foreground">
                 Day {phase.dayIndex + 1} / {totalDays}
@@ -538,18 +448,6 @@ export function FirstRunPicker({
                 <X className="size-3.5" />
                 Exit
               </Button>
-              {resumed && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={startOver}
-                  className="text-muted-foreground hover:text-foreground"
-                  title="Discard saved progress and start from Day 1"
-                >
-                  <RotateCcw className="size-3.5" />
-                  Start over
-                </Button>
-              )}
             </div>
           </div>
         </DialogContent>
@@ -593,17 +491,9 @@ export function FirstRunPicker({
         >
           <DialogHeader className="space-y-2 border-b border-border/40 px-5 pb-3 pt-5">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-medium text-primary">
-                  <Sparkles className="size-3" />
-                  Quick pick
-                </div>
-                {resumed && (
-                  <div className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/30">
-                    <RotateCcw className="size-2.5" />
-                    Resumed
-                  </div>
-                )}
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-medium text-primary">
+                <Sparkles className="size-3" />
+                Quick pick
               </div>
               <span className="text-[11px] tabular-nums text-muted-foreground">
                 {dayLabel.short} · {effectiveSlotIndex + 1} / {totalSteps}
@@ -863,18 +753,6 @@ export function FirstRunPicker({
                 <X className="size-3.5" />
                 Exit
               </Button>
-              {resumed && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={startOver}
-                  className="text-muted-foreground hover:text-foreground"
-                  title="Discard saved progress and start from Day 1"
-                >
-                  <RotateCcw className="size-3.5" />
-                  Start over
-                </Button>
-              )}
             </div>
           </div>
         </DialogContent>
