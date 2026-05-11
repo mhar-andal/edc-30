@@ -277,7 +277,11 @@ export const setMeetTime = mutation({
 });
 
 /**
- * Hard-clear the entire meetup row (drops both label and meet time).
+ * Hard-clear the entire meetup row (drops label and meet time). The
+ * label-bound map pin lives in the `spots` table and is intentionally
+ * left alone here — pins are reused across convergences sharing the
+ * same label, so we don't drop the pin just because one convergence
+ * stopped using the spot.
  */
 export const clear = mutation({
   args: {

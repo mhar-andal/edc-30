@@ -20,6 +20,7 @@ export type ActivityKind =
   | "location_changed"
   | "notes_changed"
   | "schedule_changed"
+  | "pin_changed"
   | "joined"
   | "left";
 
@@ -45,6 +46,12 @@ export interface ActivityData {
   toStartMs?: number;
   fromEndMs?: number;
   toEndMs?: number;
+  fromMapX?: number;
+  fromMapY?: number;
+  toMapX?: number;
+  toMapY?: number;
+  fromPinColor?: string;
+  toPinColor?: string;
 }
 
 /**

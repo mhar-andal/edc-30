@@ -3,6 +3,7 @@ import {
   CalendarClock,
   LayoutGrid,
   Loader2,
+  Map as MapIcon,
   Plus,
   Search,
   Sparkles,
@@ -26,6 +27,7 @@ import {
   isTourInProgress,
   markTourSeen,
 } from "@/components/onboarding/OnboardingTour";
+import { MapDayDialog } from "@/components/map/MapDayDialog";
 import { useScheduleData } from "@/lib/useScheduleData";
 import { useMemberSession } from "@/lib/useMemberSession";
 import {
@@ -33,6 +35,7 @@ import {
   DAYS,
   FESTIVAL_DAY_RANGE_MS,
   clampMs,
+  getCurrentFestivalDay,
   type DayKey,
 } from "@/lib/time";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -52,6 +55,14 @@ interface EditState {
 const DEFAULT_DURATION_MS = 60 * 60 * 1000;
 const FIRST_RUN_STORAGE_PREFIX = "edc.first-run-picker.shown.v1";
 const VIEW_STORAGE_KEY = "edc.schedule-view.v1";
+/**
+ * Per-festival-day flag tracking whether we already auto-opened
+ * "My Day" for that calendar date. Stored as
+ * `edc.auto-myday.<day_key>` so each of the three days gets its own
+ * one-time autoswitch — and any manual change the user makes after
+ * that sticks for the rest of the day.
+ */
+const AUTO_MYDAY_PREFIX = "edc.auto-myday.v1";
 
 function firstRunStorageKey(memberId: string): string {
   return `${FIRST_RUN_STORAGE_PREFIX}:${memberId}`;
@@ -67,19 +78,55 @@ function loadInitialView(): ScheduleView {
   return "schedule";
 }
 
+/**
+ * Decide the day + view to land on when Schedule first mounts.
+ *
+ * On a festival day we want the user to drop straight into their
+ * "My Day" timeline for that day — but only on the first visit per
+ * device per festival day. After the auto-switch has fired once (or
+ * after the user manually changes view), we respect whatever they
+ * picked and let the saved preference drive subsequent renders.
+ */
+function loadInitialDayAndView(): { day: DayKey; view: ScheduleView } {
+  const today = getCurrentFestivalDay();
+  if (today) {
+    const flagKey = `${AUTO_MYDAY_PREFIX}:${today}`;
+    let alreadyAuto = false;
+    try {
+      alreadyAuto = window.localStorage.getItem(flagKey) === "1";
+    } catch {
+      /* no-op */
+    }
+    if (!alreadyAuto) {
+      try {
+        window.localStorage.setItem(flagKey, "1");
+      } catch {
+        /* no-op */
+      }
+      return { day: today, view: "myday" };
+    }
+    // Auto-switch already fired today: still default the day
+    // selector to today, but honor the saved view preference.
+    return { day: today, view: loadInitialView() };
+  }
+  return { day: "day_1", view: loadInitialView() };
+}
+
 export default function Schedule() {
   const session = useMemberSession();
   const data = useScheduleData();
-  const [day, setDay] = useState<DayKey>("day_1");
+  const initial = useMemo(() => loadInitialDayAndView(), []);
+  const [day, setDay] = useState<DayKey>(initial.day);
   const [search, setSearch] = useState("");
   const [mobileTab, setMobileTab] = useState<MobileTab>("artists");
-  const [view, setView] = useState<ScheduleView>(loadInitialView);
+  const [view, setView] = useState<ScheduleView>(initial.view);
   const [editState, setEditState] = useState<EditState | null>(null);
   const [firstRunOpen, setFirstRunOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourResumable, setTourResumable] = useState<boolean>(() =>
     isTourInProgress(),
   );
+  const [mapDialogOpen, setMapDialogOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -235,8 +282,17 @@ export default function Schedule() {
           </TabsList>
         </Tabs>
 
-        {myMemberId && (
-          <div className="flex justify-end">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <button
+            type="button"
+            onClick={() => setMapDialogOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-card/60"
+            title={`See pinned spots for ${DAY_LABELS[day].full}`}
+          >
+            <MapIcon className="size-3" />
+            View map
+          </button>
+          {myMemberId && (
             <button
               type="button"
               onClick={reopenWalkthrough}
@@ -246,8 +302,8 @@ export default function Schedule() {
               <Sparkles className="size-3" />
               Quick-pick walkthrough
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {tourResumable && (
           <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
@@ -435,6 +491,12 @@ export default function Schedule() {
       <OnboardingTour
         open={tourOpen}
         onClose={() => setTourOpen(false)}
+      />
+
+      <MapDayDialog
+        open={mapDialogOpen}
+        onOpenChange={setMapDialogOpen}
+        day={day}
       />
     </div>
   );

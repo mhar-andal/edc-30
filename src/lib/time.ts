@@ -75,6 +75,46 @@ export const FESTIVAL_DAY_RANGE_MS: Record<DayKey, { start: number; end: number 
 
 export const FESTIVAL_DAY_HOURS = 12.5;
 
+/**
+ * PDT calendar dates that map to each festival day. Keyed by the
+ * "YYYY-MM-DD" string emitted by `ISO_DATE_FORMATTER` so we can look
+ * up "today" without timezone math at the call site.
+ */
+const FESTIVAL_DATE_TO_DAY: Record<string, DayKey> = {
+  "2026-05-15": "day_1",
+  "2026-05-16": "day_2",
+  "2026-05-17": "day_3",
+};
+
+/**
+ * If "now" lands on a festival day, return that day's key. Used by
+ * the Schedule page to auto-open the matching "My Day" view when a
+ * device opens the app on Fri / Sat / Sun of the festival.
+ *
+ * Resolution order:
+ *   1. If `now` is inside a festival day's UTC window
+ *      (`FESTIVAL_DAY_RANGE_MS`), return that day. This covers the
+ *      late-night hours after midnight when "today's calendar date"
+ *      has rolled over but the festival night is still going.
+ *   2. Otherwise fall back to the PDT calendar date — so e.g. Friday
+ *      afternoon (before gates open) still resolves to Day 1.
+ *   3. Anything else returns `null` (off-festival).
+ */
+export function getCurrentFestivalDay(
+  now: number = Date.now(),
+): DayKey | null {
+  for (const day of DAYS) {
+    const r = FESTIVAL_DAY_RANGE_MS[day];
+    if (now >= r.start && now <= r.end) return day;
+  }
+  try {
+    const dateStr = ISO_DATE_FORMATTER.format(new Date(now));
+    return FESTIVAL_DATE_TO_DAY[dateStr] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function dayProgress(ms: number, day: DayKey): number {
   const { start, end } = FESTIVAL_DAY_RANGE_MS[day];
   return (ms - start) / (end - start);

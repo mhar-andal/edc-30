@@ -17,6 +17,7 @@ import type * as members from "../members.js";
 import type * as mentions from "../mentions.js";
 import type * as seed from "../seed.js";
 import type * as sidequests from "../sidequests.js";
+import type * as spots from "../spots.js";
 
 import type {
   ApiFromModules,
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   mentions: typeof mentions;
   seed: typeof seed;
   sidequests: typeof sidequests;
+  spots: typeof spots;
 }>;
 
 /**
