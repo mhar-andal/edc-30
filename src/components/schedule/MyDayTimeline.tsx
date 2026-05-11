@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarPlus,
@@ -16,6 +16,7 @@ import {
 import { MemberChip } from "@/components/MemberChip";
 import { MemberDot } from "@/components/MemberDot";
 import { SidequestPopover } from "@/components/sidequests/SidequestPopover";
+import { MapDayDialog } from "@/components/map/MapDayDialog";
 import { getStagePalette } from "@/lib/colors";
 import {
   FESTIVAL_DAY_RANGE_MS,
@@ -23,6 +24,7 @@ import {
   formatHour,
   formatRange,
   formatTime,
+  getCurrentFestivalDay,
   type DayKey,
 } from "@/lib/time";
 import {
@@ -158,6 +160,22 @@ export function MyDayTimeline({
   const range = FESTIVAL_DAY_RANGE_MS[day];
   const totalHeight = FESTIVAL_DAY_HOURS * PIXELS_PER_HOUR;
   const allMeetups = useCachedQuery(api.meetups.listAll) ?? [];
+
+  // While the device clock is on a festival day we hide the
+  // "Open Coordinate" link from meetup cards. Coordinate is for
+  // pre-event planning; once the user is at the festival, the map is
+  // the destination they actually need.
+  const isFestivalDay = useMemo(() => getCurrentFestivalDay() !== null, []);
+
+  // Map dialog used to surface a meetup's pinned spot when the user
+  // taps the spot chip inside a meetup card's popover. Held at the
+  // timeline root so it doesn't get unmounted with the popover.
+  const [mapDialog, setMapDialog] = useState<{
+    open: boolean;
+    label: string | null;
+  }>({ open: false, label: null });
+  const openSpotMap = (label: string) =>
+    setMapDialog({ open: true, label });
 
   const events = useMemo<TimelineEvent[]>(() => {
     if (!myMemberId) return [];
@@ -363,6 +381,8 @@ export function MyDayTimeline({
                     membersById={data.membersById}
                     myMemberId={myMemberId}
                     onEditSidequest={onEditSidequest}
+                    onOpenSpotMap={openSpotMap}
+                    hideCoordinateLink={isFestivalDay}
                   />
                 </div>
               );
@@ -370,6 +390,15 @@ export function MyDayTimeline({
           </div>
         </div>
       </div>
+
+      <MapDayDialog
+        open={mapDialog.open}
+        onOpenChange={(o) =>
+          setMapDialog((cur) => (o ? cur : { ...cur, open: false }))
+        }
+        day={day}
+        focusLabel={mapDialog.label}
+      />
     </div>
   );
 }
@@ -422,11 +451,15 @@ function TimelineCard({
   membersById,
   myMemberId,
   onEditSidequest,
+  onOpenSpotMap,
+  hideCoordinateLink,
 }: {
   event: TimelineEvent;
   membersById: Map<string, Member>;
   myMemberId: Id<"members">;
   onEditSidequest?: (sidequest: Sidequest) => void;
+  onOpenSpotMap: (label: string) => void;
+  hideCoordinateLink: boolean;
 }) {
   if (event.kind === "artist") {
     return <ArtistTimelineCard artist={event.artist} />;
@@ -438,6 +471,8 @@ function TimelineCard({
         spot={event.spot}
         membersById={membersById}
         myMemberId={myMemberId}
+        onOpenSpotMap={onOpenSpotMap}
+        hideCoordinateLink={hideCoordinateLink}
       />
     );
   }
@@ -489,11 +524,15 @@ function MeetupTimelineCard({
   spot,
   membersById,
   myMemberId,
+  onOpenSpotMap,
+  hideCoordinateLink,
 }: {
   conv: Convergence;
   spot: Doc<"meetups"> | undefined;
   membersById: Map<string, Member>;
   myMemberId: Id<"members">;
+  onOpenSpotMap: (label: string) => void;
+  hideCoordinateLink: boolean;
 }) {
   const palette = getStagePalette(conv.destinationStage);
   const others = conv.memberIds
@@ -588,10 +627,15 @@ function MeetupTimelineCard({
 
         <div className="flex flex-wrap items-center gap-1.5">
           {spot?.label ? (
-            <div className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-1 text-[11px] font-medium text-emerald-200 ring-1 ring-emerald-500/40">
+            <button
+              type="button"
+              onClick={() => onOpenSpotMap(spot.label as string)}
+              title={`View ${spot.label} on the map`}
+              className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-1 text-[11px] font-medium text-emerald-200 ring-1 ring-emerald-500/40 transition-colors hover:bg-emerald-500/25"
+            >
               <MapPin className="size-3" />
               {spot.label}
-            </div>
+            </button>
           ) : (
             <div className="inline-flex items-center gap-1 rounded-md border border-dashed border-border/60 px-2 py-1 text-[11px] text-muted-foreground">
               <MapPin className="size-3" />
@@ -627,13 +671,15 @@ function MeetupTimelineCard({
           </div>
         )}
 
-        <Link
-          to={coordinateHref}
-          className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-border/60 bg-card/40 text-xs font-medium hover:bg-card/60"
-        >
-          <MapPin className="size-3.5" />
-          Open Coordinate
-        </Link>
+        {!hideCoordinateLink && (
+          <Link
+            to={coordinateHref}
+            className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-border/60 bg-card/40 text-xs font-medium hover:bg-card/60"
+          >
+            <MapPin className="size-3.5" />
+            Open Coordinate
+          </Link>
+        )}
       </PopoverContent>
     </Popover>
   );

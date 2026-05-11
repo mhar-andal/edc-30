@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "convex/react";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, MapPin, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,8 +13,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SpotPicker } from "@/components/SpotPicker";
+import { MapPicker } from "@/components/map/MapPicker";
 import { useCachedQuery } from "@/lib/useCachedQuery";
 import { useIsOffline } from "@/lib/useIsOffline";
+import { indexSpotsByLabel, spotLabelKey } from "@/lib/spots";
 import {
   DAY_LABELS,
   applyTimeToAnchor,
@@ -80,6 +82,17 @@ export function SidequestDialog({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
+
+  // Pin (if any) for the current Meet-at label. Pins are stored on
+  // the shared `spots` table keyed by label, so the UI surface here
+  // is the same one the convergence picker uses.
+  const spots = useCachedQuery(api.spots.list) ?? [];
+  const spotsByLabel = useMemo(() => indexSpotsByLabel(spots), [spots]);
+  const trimmedLocation = draft.location.trim();
+  const chosenSpot = trimmedLocation
+    ? (spotsByLabel.get(spotLabelKey(trimmedLocation)) ?? null)
+    : null;
 
   // Combine spot suggestions across both convergence meetups and
   // existing sidequests so people see every place they've previously
@@ -288,6 +301,48 @@ export function SidequestDialog({
           />
 
           <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              <MapPin className="size-3" />
+              Map pin (optional)
+            </div>
+            {!trimmedLocation ? (
+              <p className="text-[11px] text-muted-foreground">
+                Pick a "Meet at" spot above first — pins are tied to the
+                spot label so they're reused everywhere it's used.
+              </p>
+            ) : chosenSpot ? (
+              <button
+                type="button"
+                onClick={() => setMapOpen(true)}
+                className="inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-medium tabular-nums text-foreground ring-1 transition-colors"
+                style={{
+                  backgroundColor: `${chosenSpot.pinColor}33`,
+                  boxShadow: `inset 0 0 0 1px ${chosenSpot.pinColor}80`,
+                }}
+                title={`Edit pin for ${trimmedLocation}`}
+              >
+                <span
+                  aria-hidden
+                  className="size-2 rounded-full ring-1 ring-background"
+                  style={{ backgroundColor: chosenSpot.pinColor }}
+                />
+                Pinned at {(chosenSpot.mapX * 100).toFixed(0)}%,{" "}
+                {(chosenSpot.mapY * 100).toFixed(0)}%
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setMapOpen(true)}
+                className="inline-flex h-7 items-center gap-1 rounded-full border border-dashed border-border/60 bg-background/40 px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                title={`Drop a pin for ${trimmedLocation}`}
+              >
+                <Plus className="size-3" />
+                Pin "{trimmedLocation}" on map
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
             <Label htmlFor="sq-notes">Notes (optional)</Label>
             <textarea
               id="sq-notes"
@@ -353,6 +408,14 @@ export function SidequestDialog({
           </div>
         </DialogFooter>
       </DialogContent>
+      {trimmedLocation && (
+        <MapPicker
+          open={mapOpen}
+          onOpenChange={setMapOpen}
+          label={trimmedLocation}
+          myMemberId={myMemberId}
+        />
+      )}
     </Dialog>
   );
 }

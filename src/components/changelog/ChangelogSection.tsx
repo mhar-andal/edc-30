@@ -153,6 +153,8 @@ function iconFor(kind: ActivityRow["kind"]) {
       return MapPin;
     case "notes_changed":
       return StickyNote;
+    case "pin_changed":
+      return MapPin;
     case "joined":
       return LogIn;
     case "left":
@@ -200,6 +202,11 @@ function describeAction(
       return "updated the notes";
     case "schedule_changed":
       return "moved the time";
+    case "pin_changed":
+      // Legacy event kind from when pins lived on the entity itself.
+      // New pins live on the spots table and don't log here. Kept for
+      // backward compatibility on any historical rows.
+      return "updated the map pin";
     case "joined":
       return "joined";
     case "left":
@@ -253,6 +260,12 @@ function detailFor(
         return `${formatTime(d.toStartMs)} – ${formatTime(d.toEndMs)}`;
       }
       return "";
+    case "pin_changed": {
+      if (d.toMapX !== undefined && d.toMapY !== undefined) {
+        return `${(d.toMapX * 100).toFixed(0)}%, ${(d.toMapY * 100).toFixed(0)}%`;
+      }
+      return "";
+    }
     default:
       return "";
   }

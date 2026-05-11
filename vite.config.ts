@@ -29,6 +29,7 @@ export default defineConfig({
         "icons/icon-152.png",
         "icons/icon-167.png",
         "icons/icon-180.png",
+        "edclv_2026_de_festival_map_1080x1350_r05_blurred.jpg",
       ],
       manifest: {
         name: "EDC Schedule",
@@ -73,7 +74,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest,woff2}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,jpg,svg,webmanifest,woff2}"],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api/, /\.convex\.cloud/],
         runtimeCaching: [

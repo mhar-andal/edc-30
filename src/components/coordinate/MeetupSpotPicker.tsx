@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation } from "convex/react";
-import { ArrowRight, Check, Clock, Plus, X } from "lucide-react";
+import { ArrowRight, Check, Clock, MapPin, Plus, X } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import { MemberChip } from "@/components/MemberChip";
 import { SpotPicker } from "@/components/SpotPicker";
+import { MapPicker } from "@/components/map/MapPicker";
 import { useCachedQuery } from "@/lib/useCachedQuery";
 import { useIsOffline } from "@/lib/useIsOffline";
 import { getStagePalette } from "@/lib/colors";
+import { indexSpotsByLabel, spotLabelKey } from "@/lib/spots";
 import {
   applyTimeToAnchor,
   clampMs,
@@ -103,11 +105,13 @@ export function MeetupSpotPicker({
   const offline = useIsOffline();
   const meetupLabels = useCachedQuery(api.meetups.listLabels) ?? [];
   const sidequestLabels = useCachedQuery(api.sidequests.listLabels) ?? [];
+  const spots = useCachedQuery(api.spots.list) ?? [];
 
   const [timeBusy, setTimeBusy] = useState(false);
   const [timeOpen, setTimeOpen] = useState(false);
   const [draftStartMs, setDraftStartMs] = useState<number | null>(null);
   const [draftEndMs, setDraftEndMs] = useState<number | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
 
   // Combine known labels from convergences and sidequests so people
   // see everywhere they've previously met up, sorted by combined
@@ -129,6 +133,14 @@ export function MeetupSpotPicker({
   const chosenMeetMs = existing?.meetMs ?? null;
   const chosenMeetEndMs = existing?.meetEndMs ?? null;
   const disabled = offline || !myMemberId;
+
+  // Spot bound to the current convergence label, if any. Pins live
+  // on the spots table keyed by label so they're shared across every
+  // meetup/sidequest that uses the same label.
+  const spotsByLabel = useMemo(() => indexSpotsByLabel(spots), [spots]);
+  const chosenSpot = chosenLabel
+    ? (spotsByLabel.get(spotLabelKey(chosenLabel)) ?? null)
+    : null;
 
   async function handleSpotChange(next: string | null) {
     if (disabled) return;
@@ -276,6 +288,58 @@ export function MeetupSpotPicker({
         )}
       </div>
 
+      <div className="space-y-2">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <MapPin className="size-3" />
+          Map pin
+        </div>
+        {!chosenLabel ? (
+          <p className="text-[11px] text-muted-foreground">
+            Pick a meet spot above first — pins are tied to the spot label
+            so everyone who uses the same spot reuses the pin.
+          </p>
+        ) : chosenSpot ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setMapOpen(true)}
+            title={
+              offline
+                ? "Offline — reconnect to change the map pin"
+                : `Edit pin for ${chosenLabel}`
+            }
+            className="inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-medium tabular-nums text-foreground ring-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            style={{
+              backgroundColor: `${chosenSpot.pinColor}33`,
+              boxShadow: `inset 0 0 0 1px ${chosenSpot.pinColor}80`,
+            }}
+          >
+            <span
+              aria-hidden
+              className="size-2 rounded-full ring-1 ring-background"
+              style={{ backgroundColor: chosenSpot.pinColor }}
+            />
+            Pinned at {(chosenSpot.mapX * 100).toFixed(0)}%,{" "}
+            {(chosenSpot.mapY * 100).toFixed(0)}%
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => setMapOpen(true)}
+            title={
+              offline
+                ? "Offline — reconnect"
+                : `Drop a pin for ${chosenLabel}`
+            }
+            className="inline-flex h-7 items-center gap-1 rounded-full border border-dashed border-border/60 bg-background/40 px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="size-3" />
+            Pin "{chosenLabel}" on map
+          </button>
+        )}
+      </div>
+
       <MeetTimeDialog
         open={timeOpen}
         onOpenChange={(o) => {
@@ -293,6 +357,15 @@ export function MeetupSpotPicker({
         windowEnd={windowEnd}
         timeContext={timeContext}
       />
+
+      {chosenLabel && (
+        <MapPicker
+          open={mapOpen}
+          onOpenChange={setMapOpen}
+          label={chosenLabel}
+          myMemberId={myMemberId}
+        />
+      )}
     </div>
   );
 }

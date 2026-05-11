@@ -93,6 +93,34 @@ export default defineSchema({
     .index("by_sidequest_member", ["sidequestId", "memberId"]),
 
   /**
+   * Map pin associated with a meet-spot label. The label IS the spot
+   * (e.g. "Electric Avenue Sign"); pinning it adds a position + color
+   * that's then reused by every meetup or sidequest that picks the
+   * same label. There's no row when a label has no pin yet.
+   *
+   * Lookup key is `labelKey` — the label trimmed and lower-cased — so
+   * "Electric Avenue Sign" and "electric avenue sign" reference the
+   * same spot. The display label keeps the most-recent casing.
+   */
+  spots: defineTable({
+    labelKey: v.string(),
+    label: v.string(),
+    /** Normalized [0..1] horizontal position. */
+    mapX: v.number(),
+    /** Normalized [0..1] vertical position. */
+    mapY: v.number(),
+    /** Pin tint, hex string like "#f43f5e". */
+    pinColor: v.string(),
+    createdAt: v.number(),
+    editedAt: v.number(),
+    /**
+     * Last person to set/move the pin for this spot. Optional so seed
+     * data doesn't have to attribute itself to a member.
+     */
+    editedByMemberId: v.optional(v.id("members")),
+  }).index("by_label", ["labelKey"]),
+
+  /**
    * Comments attached to either a sidequest or a convergence meeting.
    *
    * Convergences are keyed by their composite identity rather than the
@@ -148,6 +176,7 @@ export default defineSchema({
       v.literal("location_changed"),
       v.literal("notes_changed"),
       v.literal("schedule_changed"),
+      v.literal("pin_changed"),
       v.literal("joined"),
       v.literal("left"),
     ),
@@ -160,6 +189,7 @@ export default defineSchema({
      *   - location: fromLocation, toLocation
      *   - notes:    fromNotes, toNotes
      *   - schedule: fromStartMs, toStartMs, fromEndMs, toEndMs
+     *   - pin:      fromMapX/Y, toMapX/Y, fromPinColor, toPinColor
      */
     data: v.optional(
       v.object({
@@ -179,6 +209,12 @@ export default defineSchema({
         toStartMs: v.optional(v.number()),
         fromEndMs: v.optional(v.number()),
         toEndMs: v.optional(v.number()),
+        fromMapX: v.optional(v.number()),
+        fromMapY: v.optional(v.number()),
+        toMapX: v.optional(v.number()),
+        toMapY: v.optional(v.number()),
+        fromPinColor: v.optional(v.string()),
+        toPinColor: v.optional(v.string()),
       }),
     ),
     createdAt: v.number(),
