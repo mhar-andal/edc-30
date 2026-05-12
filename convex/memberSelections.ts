@@ -1,6 +1,12 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+const DAY_VALIDATOR = v.union(
+  v.literal("day_1"),
+  v.literal("day_2"),
+  v.literal("day_3"),
+);
+
 export const listAll = query({
   args: {},
   handler: async (ctx) => {
@@ -40,6 +46,47 @@ export const toggle = mutation({
       addedAt: Date.now(),
     });
     return { added: true };
+  },
+});
+
+/**
+ * Removes every selection a member has for artists scheduled on the
+ * given festival day. Used by the "Reset day's picks" affordances in
+ * Schedule and the Quick-pick walkthrough so the user can start
+ * fresh on a single day without nuking their picks for the other
+ * two. Returns the count of rows deleted so the UI can confirm what
+ * happened (or no-op silently if there was nothing to clear).
+ */
+export const clearForDay = mutation({
+  args: {
+    memberId: v.id("members"),
+    day: DAY_VALIDATOR,
+  },
+  handler: async (ctx, { memberId, day }) => {
+    // Pull every artist on the day once so we can intersect against
+    // the member's selections in memory. Avoids per-pick artist
+    // lookups when a member has dozens of picks across the festival.
+    const dayArtists = await ctx.db
+      .query("artists")
+      .withIndex("by_day_start", (q) => q.eq("day", day))
+      .collect();
+    const dayArtistIds = new Set<string>(
+      dayArtists.map((a) => a._id as string),
+    );
+    if (dayArtistIds.size === 0) return { removed: 0 };
+
+    const selections = await ctx.db
+      .query("memberSelections")
+      .withIndex("by_member", (q) => q.eq("memberId", memberId))
+      .collect();
+
+    let removed = 0;
+    for (const sel of selections) {
+      if (!dayArtistIds.has(sel.artistId as string)) continue;
+      await ctx.db.delete(sel._id);
+      removed++;
+    }
+    return { removed };
   },
 });
 

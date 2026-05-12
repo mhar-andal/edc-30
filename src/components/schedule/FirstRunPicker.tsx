@@ -9,6 +9,7 @@ import {
   Loader2,
   MapPin,
   Plus,
+  RotateCcw,
   Sparkles,
   UserPlus,
   UserX,
@@ -135,6 +136,7 @@ export function FirstRunPicker({
 }: Props) {
   const toggle = useMutation(api.memberSelections.toggle);
   const addManyPicks = useMutation(api.memberSelections.addMany);
+  const clearPicksForDay = useMutation(api.memberSelections.clearForDay);
   const joinSidequest = useMutation(api.sidequests.join);
   const leaveSidequest = useMutation(api.sidequests.leave);
   const offline = useIsOffline();
@@ -159,6 +161,9 @@ export function FirstRunPicker({
   // default to collapsed so the arrival step stays compact for
   // first-time users.
   const [donorsOpen, setDonorsOpen] = useState(false);
+  // Set while the per-day reset request is in flight so the button
+  // can show a spinner and we can short-circuit double-taps.
+  const [resettingDay, setResettingDay] = useState<DayKey | null>(null);
   // Single-friend expand state for the per-donor pick preview. Only
   // one donor's pick list is shown at a time to keep scroll under
   // control on small dialogs.
@@ -351,6 +356,57 @@ export function FirstRunPicker({
     (myMemberId ? selectionsByMember.get(myMemberId) : null) ??
     new Set<string>();
 
+  /**
+   * Count of the user's picks on a given festival day. Used to label
+   * + gate the "Reset day's picks" button on the arrival step so the
+   * user only sees it when there's actually something to clear and
+   * can tell at a glance how big a wipe they're confirming.
+   */
+  function pickCountForDay(d: DayKey): number {
+    if (myPickedSet.size === 0) return 0;
+    const list = artistsByDay.get(d) ?? [];
+    let n = 0;
+    for (const a of list) if (myPickedSet.has(a._id)) n++;
+    return n;
+  }
+
+  /**
+   * Wipes the user's picks on a single day and snaps the walkthrough
+   * back to that day's arrival step so any in-flight slot progress
+   * doesn't refer to picks that no longer exist. Confirms first
+   * because this is destructive and there's no undo.
+   */
+  async function handleResetCurrentDay(): Promise<void> {
+    if (phase.kind !== "arrival") return;
+    if (!myMemberId || offline) return;
+    const day = DAYS[phase.dayIndex];
+    const count = pickCountForDay(day);
+    if (count === 0) return;
+    if (resettingDay !== null) return;
+    const dayLabel = `${DAY_LABELS[day].full} (${DAY_LABELS[day].date})`;
+    const ok = window.confirm(
+      `Remove your ${count} pick${count === 1 ? "" : "s"} for ${dayLabel}? Your other days stay untouched.`,
+    );
+    if (!ok) return;
+    setResettingDay(day);
+    try {
+      await clearPicksForDay({ memberId: myMemberId, day });
+      // Drop any cached arrival time for the day so the next
+      // commitArrival recomputes slots against the now-empty pick
+      // set instead of stale state.
+      setArrivalsByDay((prev) => {
+        if (!prev.has(day)) return prev;
+        const next = new Map(prev);
+        next.delete(day);
+        return next;
+      });
+    } catch (err) {
+      console.error("Failed to clear picks for day", err);
+    } finally {
+      setResettingDay(null);
+    }
+  }
+
   function commitArrival() {
     if (phase.kind !== "arrival") return;
     const day = DAYS[phase.dayIndex];
@@ -524,6 +580,8 @@ export function FirstRunPicker({
     const totalDays = DAYS.length;
     const donors = donorsByDay.get(day) ?? [];
     const isCopying = copyBusyMemberId !== null;
+    const dayPickCount = pickCountForDay(day);
+    const isResettingThisDay = resettingDay === day;
     return (
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
         <DialogContent
@@ -753,6 +811,28 @@ export function FirstRunPicker({
               >
                 Back
               </Button>
+              {dayPickCount > 0 && myMemberId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void handleResetCurrentDay()}
+                  disabled={offline || isResettingThisDay || isCopying}
+                  title={
+                    offline
+                      ? "Offline — reconnect to reset"
+                      : `Remove your ${dayPickCount} pick${
+                          dayPickCount === 1 ? "" : "s"
+                        } on ${dayLabel.full}`
+                  }
+                >
+                  {isResettingThisDay ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <RotateCcw className="size-3.5" />
+                  )}
+                  Reset {dayLabel.short} ({dayPickCount})
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={onClose}>
                 <X className="size-3.5" />
                 Exit
