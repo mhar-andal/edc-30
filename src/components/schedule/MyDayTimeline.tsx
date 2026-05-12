@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarPlus,
   Clock,
+  Eye,
   MapPin,
   Sparkles,
   UserPlus,
@@ -13,6 +14,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { MemberChip } from "@/components/MemberChip";
 import { MemberDot } from "@/components/MemberDot";
 import { SidequestPopover } from "@/components/sidequests/SidequestPopover";
@@ -167,6 +175,37 @@ export function MyDayTimeline({
   // the destination they actually need.
   const isFestivalDay = useMemo(() => getCurrentFestivalDay() !== null, []);
 
+  // Whose day are we showing? Defaults to the signed-in member, but
+  // can be flipped to any other member via the header dropdown so the
+  // user can preview a friend's plan side-by-side. Mutating actions
+  // (edit/create sidequests, walkthrough) stay attached to the
+  // session member regardless of who's being viewed.
+  const [viewedMemberId, setViewedMemberId] = useState<Id<"members"> | null>(
+    myMemberId,
+  );
+  // Re-default to ourselves when the underlying account changes (e.g.
+  // a sign-out/in cycle while the timeline stays mounted).
+  useEffect(() => {
+    setViewedMemberId(myMemberId);
+  }, [myMemberId]);
+
+  const isViewingSelf =
+    viewedMemberId !== null && viewedMemberId === myMemberId;
+  const viewedMember = viewedMemberId
+    ? data.membersById.get(viewedMemberId)
+    : null;
+
+  // Roster shown in the dropdown. Self always pinned to the top so
+  // jumping back is a single click; everyone else sorted alphabetically.
+  const memberOptions = useMemo<Member[]>(() => {
+    const all = data.members;
+    const me = myMemberId ? data.membersById.get(myMemberId) : undefined;
+    const others = all
+      .filter((m) => m._id !== myMemberId)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return me ? [me, ...others] : others;
+  }, [data.members, data.membersById, myMemberId]);
+
   // Map dialog used to surface a meetup's pinned spot when the user
   // taps the spot chip inside a meetup card's popover. Held at the
   // timeline root so it doesn't get unmounted with the popover.
@@ -178,14 +217,14 @@ export function MyDayTimeline({
     setMapDialog({ open: true, label });
 
   const events = useMemo<TimelineEvent[]>(() => {
-    if (!myMemberId) return [];
+    if (!viewedMemberId) return [];
     const out: TimelineEvent[] = [];
 
-    const myPicks = data.selectionsByMember.get(myMemberId);
-    if (myPicks && myPicks.size > 0) {
+    const viewedPicks = data.selectionsByMember.get(viewedMemberId);
+    if (viewedPicks && viewedPicks.size > 0) {
       const dayArtists = data.artistsByDay.get(day) ?? [];
       for (const a of dayArtists) {
-        if (myPicks.has(a._id)) {
+        if (viewedPicks.has(a._id)) {
           out.push({
             id: `artist:${a._id}`,
             kind: "artist",
@@ -199,7 +238,7 @@ export function MyDayTimeline({
 
     const dayQuests = data.sidequestsByDay.get(day) ?? [];
     for (const sq of dayQuests) {
-      if (sq.participantMemberIds.some((id) => id === myMemberId)) {
+      if (sq.participantMemberIds.some((id) => id === viewedMemberId)) {
         out.push({
           id: `sidequest:${sq._id}`,
           kind: "sidequest",
@@ -226,7 +265,7 @@ export function MyDayTimeline({
       );
     }
     for (const conv of convergences) {
-      if (!conv.memberIds.includes(myMemberId)) continue;
+      if (!conv.memberIds.includes(viewedMemberId)) continue;
       const key = meetupKey(
         conv.day,
         conv.windowStart,
@@ -245,7 +284,7 @@ export function MyDayTimeline({
 
     out.sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs);
     return out;
-  }, [day, data, myMemberId, allMeetups]);
+  }, [day, data, viewedMemberId, allMeetups]);
 
   const placed = useMemo(() => layoutEvents(events), [events]);
   const counts = useMemo(() => {
@@ -286,6 +325,10 @@ export function MyDayTimeline({
     );
   }
 
+  // After the guard above, the timeline always has a viewed member.
+  // Default to the session user if local state hasn't caught up yet.
+  const effectiveViewedMemberId: Id<"members"> = viewedMemberId ?? myMemberId;
+
   return (
     <div className="rounded-lg border border-border/60 bg-card/40">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-3 py-2 text-xs">
@@ -318,9 +361,44 @@ export function MyDayTimeline({
             sidequests
           </span>
         </div>
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          Your day
-        </span>
+        {memberOptions.length > 0 && viewedMemberId && (
+          <Select
+            value={viewedMemberId}
+            onValueChange={(v) => setViewedMemberId(v as Id<"members">)}
+          >
+            <SelectTrigger
+              className="h-7 w-auto gap-1.5 rounded-full border-border/50 bg-background/40 px-2 text-[11px]"
+              aria-label="View someone else's day"
+            >
+              <Eye className="size-3 shrink-0 text-muted-foreground" />
+              <SelectValue>
+                <span className="inline-flex items-center gap-1.5">
+                  <MemberDot
+                    color={viewedMember?.color ?? "#8b8b8b"}
+                    size="xs"
+                  />
+                  <span className="truncate">
+                    {isViewingSelf
+                      ? "Your day"
+                      : `${viewedMember?.name ?? "Someone"}'s day`}
+                  </span>
+                </span>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent align="end">
+              {memberOptions.map((m) => (
+                <SelectItem key={m._id} value={m._id}>
+                  <span className="inline-flex items-center gap-1.5">
+                    <MemberDot color={m.color} size="xs" />
+                    <span>
+                      {m._id === myMemberId ? `${m.name} (you)` : m.name}
+                    </span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </header>
 
       <div className="relative">
@@ -354,8 +432,14 @@ export function MyDayTimeline({
 
             {placed.length === 0 && (
               <EmptyState
-                onCreateSidequest={onCreateSidequest}
-                onOpenWalkthrough={onOpenWalkthrough}
+                isViewingSelf={isViewingSelf}
+                viewedMemberName={viewedMember?.name ?? null}
+                onCreateSidequest={
+                  isViewingSelf ? onCreateSidequest : undefined
+                }
+                onOpenWalkthrough={
+                  isViewingSelf ? onOpenWalkthrough : undefined
+                }
               />
             )}
 
@@ -380,7 +464,10 @@ export function MyDayTimeline({
                     event={event}
                     membersById={data.membersById}
                     myMemberId={myMemberId}
-                    onEditSidequest={onEditSidequest}
+                    viewedMemberId={effectiveViewedMemberId}
+                    onEditSidequest={
+                      isViewingSelf ? onEditSidequest : undefined
+                    }
                     onOpenSpotMap={openSpotMap}
                     hideCoordinateLink={isFestivalDay}
                   />
@@ -404,9 +491,13 @@ export function MyDayTimeline({
 }
 
 function EmptyState({
+  isViewingSelf,
+  viewedMemberName,
   onCreateSidequest,
   onOpenWalkthrough,
 }: {
+  isViewingSelf: boolean;
+  viewedMemberName: string | null;
   onCreateSidequest?: () => void;
   onOpenWalkthrough?: () => void;
 }) {
@@ -414,34 +505,41 @@ function EmptyState({
     <div className="pointer-events-none absolute inset-x-3 top-6 rounded-md border border-dashed border-border/50 bg-background/40 px-4 py-6 text-center text-xs leading-relaxed text-muted-foreground">
       <Sparkles className="mx-auto mb-2 size-4 opacity-60" />
       <p className="font-medium text-foreground">
-        Nothing on your day yet
+        {isViewingSelf
+          ? "Nothing on your day yet"
+          : viewedMemberName
+            ? `${viewedMemberName} hasn't planned anything yet`
+            : "Nothing planned yet"}
       </p>
       <p className="mt-1">
-        Add picks on the Schedule view, plan a meetup on Coordinate, or
-        propose a sidequest to fill this in.
+        {isViewingSelf
+          ? "Add picks on the Schedule view, plan a meetup on Coordinate, or propose a sidequest to fill this in."
+          : "Once they pick artists, plan meetups, or RSVP to sidequests, you'll see them here."}
       </p>
-      <div className="pointer-events-auto mt-3 flex flex-wrap items-center justify-center gap-2">
-        {onOpenWalkthrough && (
-          <button
-            type="button"
-            onClick={onOpenWalkthrough}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
-          >
-            <Sparkles className="size-3.5" />
-            Quick-pick walkthrough
-          </button>
-        )}
-        {onCreateSidequest && (
-          <button
-            type="button"
-            onClick={onCreateSidequest}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-violet-500 px-3 text-xs font-semibold text-white shadow-sm hover:bg-violet-500/90"
-          >
-            <CalendarPlus className="size-3.5" />
-            Create sidequest
-          </button>
-        )}
-      </div>
+      {isViewingSelf && (
+        <div className="pointer-events-auto mt-3 flex flex-wrap items-center justify-center gap-2">
+          {onOpenWalkthrough && (
+            <button
+              type="button"
+              onClick={onOpenWalkthrough}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+            >
+              <Sparkles className="size-3.5" />
+              Quick-pick walkthrough
+            </button>
+          )}
+          {onCreateSidequest && (
+            <button
+              type="button"
+              onClick={onCreateSidequest}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-violet-500 px-3 text-xs font-semibold text-white shadow-sm hover:bg-violet-500/90"
+            >
+              <CalendarPlus className="size-3.5" />
+              Create sidequest
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -450,6 +548,7 @@ function TimelineCard({
   event,
   membersById,
   myMemberId,
+  viewedMemberId,
   onEditSidequest,
   onOpenSpotMap,
   hideCoordinateLink,
@@ -457,6 +556,12 @@ function TimelineCard({
   event: TimelineEvent;
   membersById: Map<string, Member>;
   myMemberId: Id<"members">;
+  /**
+   * The member whose day we're showing right now. Used by meetup
+   * cards to compute the "others meeting with you" list relative to
+   * the viewed perspective rather than the logged-in session.
+   */
+  viewedMemberId: Id<"members">;
   onEditSidequest?: (sidequest: Sidequest) => void;
   onOpenSpotMap: (label: string) => void;
   hideCoordinateLink: boolean;
@@ -470,7 +575,7 @@ function TimelineCard({
         conv={event.conv}
         spot={event.spot}
         membersById={membersById}
-        myMemberId={myMemberId}
+        viewedMemberId={viewedMemberId}
         onOpenSpotMap={onOpenSpotMap}
         hideCoordinateLink={hideCoordinateLink}
       />
@@ -523,20 +628,21 @@ function MeetupTimelineCard({
   conv,
   spot,
   membersById,
-  myMemberId,
+  viewedMemberId,
   onOpenSpotMap,
   hideCoordinateLink,
 }: {
   conv: Convergence;
   spot: Doc<"meetups"> | undefined;
   membersById: Map<string, Member>;
-  myMemberId: Id<"members">;
+  /** Whose perspective we're rendering — used to filter "others". */
+  viewedMemberId: Id<"members">;
   onOpenSpotMap: (label: string) => void;
   hideCoordinateLink: boolean;
 }) {
   const palette = getStagePalette(conv.destinationStage);
   const others = conv.memberIds
-    .filter((id) => id !== myMemberId)
+    .filter((id) => id !== viewedMemberId)
     .map((id) => membersById.get(id))
     .filter((m): m is Member => Boolean(m));
   const focusKey = meetupKey(

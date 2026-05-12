@@ -221,4 +221,44 @@ export default defineSchema({
   })
     .index("by_owner", ["ownerType", "ownerId", "createdAt"])
     .index("by_actor", ["actorMemberId"]),
+
+  /**
+   * In-app notifications surfaced via the header bell. Today the only
+   * `kind` is `"mention"` (someone wrote `@You` in a comment), but
+   * leaving the union open-ended lets us add more (e.g. "joined your
+   * sidequest", "convergence spot picked") without a schema rev.
+   *
+   * Each row carries enough denormalized context (author, owner key,
+   * body snippet) to render the notification list without re-fetching
+   * the source comment — useful when the source has since been edited
+   * or deleted, and cheap because the rows are short-lived.
+   *
+   * Cascades:
+   *  - When the source `comments` row is deleted, its notifications
+   *    are deleted too.
+   *  - When the parent sidequest is deleted, its comments — and
+   *    therefore their notifications — cascade away.
+   *  - When a member is removed, both their incoming (recipient) and
+   *    outgoing (author) notifications are cleaned up so we never
+   *    render orphaned rows.
+   *
+   * `readAt` is optional: undefined means unread. We use that
+   * convention rather than a boolean so the timestamp is
+   * automatically captured the first time the user reads it.
+   */
+  notifications: defineTable({
+    recipientMemberId: v.id("members"),
+    kind: v.union(v.literal("mention")),
+    commentId: v.id("comments"),
+    ownerType: v.union(v.literal("sidequest"), v.literal("convergence")),
+    ownerId: v.string(),
+    authorMemberId: v.id("members"),
+    /** Truncated comment body for display in the notification list. */
+    bodyPreview: v.string(),
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_recipient", ["recipientMemberId", "createdAt"])
+    .index("by_comment", ["commentId"])
+    .index("by_author", ["authorMemberId"]),
 });

@@ -300,7 +300,17 @@ export const remove = mutation({
         q.eq("ownerType", "sidequest").eq("ownerId", sidequestId),
       )
       .collect();
-    for (const c of comments) await ctx.db.delete(c._id);
+    for (const c of comments) {
+      // Each comment may have spawned bell notifications; tear those
+      // down too so recipients don't see ghosts pointing at a deleted
+      // sidequest.
+      const linkedNotifications = await ctx.db
+        .query("notifications")
+        .withIndex("by_comment", (q) => q.eq("commentId", c._id))
+        .collect();
+      for (const n of linkedNotifications) await ctx.db.delete(n._id);
+      await ctx.db.delete(c._id);
+    }
 
     // Cascade activity rows too — they reference the sidequest row id
     // which is about to disappear.

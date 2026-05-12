@@ -150,6 +150,7 @@ export const clearAllUserData = mutation({
   args: {},
   handler: async (ctx) => {
     for (const name of [
+      "notifications",
       "activity",
       "comments",
       "meetups",
@@ -393,6 +394,7 @@ export const demo = mutation({
   args: {},
   handler: async (ctx) => {
     for (const t of [
+      "notifications",
       "activity",
       "comments",
       "meetups",
