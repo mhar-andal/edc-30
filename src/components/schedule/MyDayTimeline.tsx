@@ -4,10 +4,12 @@ import {
   CalendarPlus,
   Clock,
   Eye,
+  GitCompare,
   MapPin,
   Sparkles,
   UserPlus,
   Users,
+  X,
 } from "lucide-react";
 import {
   Popover,
@@ -71,6 +73,14 @@ interface BaseEvent {
   id: string;
   startMs: number;
   endMs: number;
+  /**
+   * Tracked members who own this event. In single-viewer mode this is
+   * just the viewed member. In compare mode it can be one or both of
+   * the compared members, which lets cards render owner badges so the
+   * user can tell at a glance whose schedule the event belongs to (or
+   * if it's shared between both).
+   */
+  ownerIds: Array<Id<"members">>;
 }
 
 interface ArtistEvent extends BaseEvent {
@@ -183,19 +193,48 @@ export function MyDayTimeline({
   const [viewedMemberId, setViewedMemberId] = useState<Id<"members"> | null>(
     myMemberId,
   );
+  // Optional second member to compare against. When set the timeline
+  // shows the union of both members' events with per-card ownership
+  // badges so overlaps and divergences are visible at a glance.
+  const [compareWithMemberId, setCompareWithMemberId] =
+    useState<Id<"members"> | null>(null);
   // Re-default to ourselves when the underlying account changes (e.g.
   // a sign-out/in cycle while the timeline stays mounted).
   useEffect(() => {
     setViewedMemberId(myMemberId);
+    setCompareWithMemberId(null);
   }, [myMemberId]);
+  // If the compare partner becomes the same as the primary (e.g. the
+  // user picked them in the primary dropdown while compare was active)
+  // collapse out of compare mode rather than render a degenerate
+  // "X vs X" view.
+  useEffect(() => {
+    if (
+      compareWithMemberId !== null &&
+      compareWithMemberId === viewedMemberId
+    ) {
+      setCompareWithMemberId(null);
+    }
+  }, [compareWithMemberId, viewedMemberId]);
 
+  const isComparing = compareWithMemberId !== null;
   const isViewingSelf =
     viewedMemberId !== null && viewedMemberId === myMemberId;
+  // Mutating actions are gated to the session user. In compare mode we
+  // still allow them as long as the session user is one of the two
+  // members on screen — that keeps the common "me vs friend" flow
+  // editable while preventing edits when peeking at two friends.
+  const sessionUserOnScreen =
+    myMemberId !== null &&
+    (viewedMemberId === myMemberId || compareWithMemberId === myMemberId);
   const viewedMember = viewedMemberId
     ? data.membersById.get(viewedMemberId)
     : null;
+  const compareMember = compareWithMemberId
+    ? data.membersById.get(compareWithMemberId)
+    : null;
 
-  // Roster shown in the dropdown. Self always pinned to the top so
+  // Roster shown in the dropdowns. Self always pinned to the top so
   // jumping back is a single click; everyone else sorted alphabetically.
   const memberOptions = useMemo<Member[]>(() => {
     const all = data.members;
@@ -205,6 +244,19 @@ export function MyDayTimeline({
       .sort((a, b) => a.name.localeCompare(b.name));
     return me ? [me, ...others] : others;
   }, [data.members, data.membersById, myMemberId]);
+
+  // Picks the most useful default compare partner when the user
+  // engages compare mode: the session user themselves when peeking at
+  // a friend, otherwise the first non-self member alphabetically.
+  function defaultComparePartner(): Id<"members"> | null {
+    if (viewedMemberId !== myMemberId && myMemberId) return myMemberId;
+    const firstOther = memberOptions.find((m) => m._id !== viewedMemberId);
+    return firstOther ? firstOther._id : null;
+  }
+  function startCompare() {
+    const partner = defaultComparePartner();
+    if (partner) setCompareWithMemberId(partner);
+  }
 
   // Map dialog used to surface a meetup's pinned spot when the user
   // taps the spot chip inside a meetup card's popover. Held at the
@@ -218,35 +270,44 @@ export function MyDayTimeline({
 
   const events = useMemo<TimelineEvent[]>(() => {
     if (!viewedMemberId) return [];
+    // The set of members whose schedules contribute to the timeline.
+    // Single mode = just the viewed member; compare mode = both.
+    const trackedIds: Array<Id<"members">> = compareWithMemberId
+      ? [viewedMemberId, compareWithMemberId]
+      : [viewedMemberId];
+    const trackedSet = new Set<string>(trackedIds);
     const out: TimelineEvent[] = [];
 
-    const viewedPicks = data.selectionsByMember.get(viewedMemberId);
-    if (viewedPicks && viewedPicks.size > 0) {
-      const dayArtists = data.artistsByDay.get(day) ?? [];
-      for (const a of dayArtists) {
-        if (viewedPicks.has(a._id)) {
-          out.push({
-            id: `artist:${a._id}`,
-            kind: "artist",
-            startMs: a.startMs,
-            endMs: a.endMs,
-            artist: a,
-          });
-        }
-      }
+    const dayArtists = data.artistsByDay.get(day) ?? [];
+    for (const a of dayArtists) {
+      const owners = trackedIds.filter((id) =>
+        data.selectionsByMember.get(id)?.has(a._id),
+      );
+      if (owners.length === 0) continue;
+      out.push({
+        id: `artist:${a._id}`,
+        kind: "artist",
+        startMs: a.startMs,
+        endMs: a.endMs,
+        artist: a,
+        ownerIds: owners,
+      });
     }
 
     const dayQuests = data.sidequestsByDay.get(day) ?? [];
     for (const sq of dayQuests) {
-      if (sq.participantMemberIds.some((id) => id === viewedMemberId)) {
-        out.push({
-          id: `sidequest:${sq._id}`,
-          kind: "sidequest",
-          startMs: sq.startMs,
-          endMs: sq.endMs,
-          sidequest: sq,
-        });
-      }
+      const owners = trackedIds.filter((id) =>
+        sq.participantMemberIds.includes(id),
+      );
+      if (owners.length === 0) continue;
+      out.push({
+        id: `sidequest:${sq._id}`,
+        kind: "sidequest",
+        startMs: sq.startMs,
+        endMs: sq.endMs,
+        sidequest: sq,
+        ownerIds: owners,
+      });
     }
 
     const journeys = data.members
@@ -265,7 +326,8 @@ export function MyDayTimeline({
       );
     }
     for (const conv of convergences) {
-      if (!conv.memberIds.includes(viewedMemberId)) continue;
+      const owners = conv.memberIds.filter((id) => trackedSet.has(id));
+      if (owners.length === 0) continue;
       const key = meetupKey(
         conv.day,
         conv.windowStart,
@@ -279,12 +341,13 @@ export function MyDayTimeline({
         endMs: conv.windowEnd,
         conv,
         spot: spotByKey.get(key),
+        ownerIds: owners,
       });
     }
 
     out.sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs);
     return out;
-  }, [day, data, viewedMemberId, allMeetups]);
+  }, [day, data, viewedMemberId, compareWithMemberId, allMeetups]);
 
   const placed = useMemo(() => layoutEvents(events), [events]);
   const counts = useMemo(() => {
@@ -362,42 +425,62 @@ export function MyDayTimeline({
           </span>
         </div>
         {memberOptions.length > 0 && viewedMemberId && (
-          <Select
-            value={viewedMemberId}
-            onValueChange={(v) => setViewedMemberId(v as Id<"members">)}
-          >
-            <SelectTrigger
-              className="h-7 w-auto gap-1.5 rounded-full border-border/50 bg-background/40 px-2 text-[11px]"
-              aria-label="View someone else's day"
-            >
-              <Eye className="size-3 shrink-0 text-muted-foreground" />
-              <SelectValue>
-                <span className="inline-flex items-center gap-1.5">
-                  <MemberDot
-                    color={viewedMember?.color ?? "#8b8b8b"}
-                    size="xs"
-                  />
-                  <span className="truncate">
-                    {isViewingSelf
-                      ? "Your day"
-                      : `${viewedMember?.name ?? "Someone"}'s day`}
-                  </span>
+          <div className="flex items-center gap-1.5">
+            <ViewerSelect
+              value={viewedMemberId}
+              members={memberOptions}
+              myMemberId={myMemberId}
+              displayLabel={
+                isViewingSelf
+                  ? "Your day"
+                  : `${viewedMember?.name ?? "Someone"}'s day`
+              }
+              displayColor={viewedMember?.color ?? "#8b8b8b"}
+              onChange={(v) => setViewedMemberId(v)}
+              ariaLabel="View someone else's day"
+            />
+            {isComparing ? (
+              <>
+                <span
+                  aria-hidden
+                  className="text-[10px] uppercase tracking-wide text-muted-foreground"
+                >
+                  vs
                 </span>
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent align="end">
-              {memberOptions.map((m) => (
-                <SelectItem key={m._id} value={m._id}>
-                  <span className="inline-flex items-center gap-1.5">
-                    <MemberDot color={m.color} size="xs" />
-                    <span>
-                      {m._id === myMemberId ? `${m.name} (you)` : m.name}
-                    </span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                <ViewerSelect
+                  value={compareWithMemberId ?? ""}
+                  members={memberOptions.filter(
+                    (m) => m._id !== viewedMemberId,
+                  )}
+                  myMemberId={myMemberId}
+                  displayLabel={compareMember?.name ?? "Pick a friend"}
+                  displayColor={compareMember?.color ?? "#8b8b8b"}
+                  onChange={(v) => setCompareWithMemberId(v)}
+                  ariaLabel="Compare with"
+                />
+                <button
+                  type="button"
+                  onClick={() => setCompareWithMemberId(null)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/50 bg-background/40 text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
+                  aria-label="Exit compare mode"
+                  title="Exit compare mode"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </>
+            ) : memberOptions.some((m) => m._id !== viewedMemberId) ? (
+              <button
+                type="button"
+                onClick={startCompare}
+                className="inline-flex h-7 items-center gap-1 rounded-full border border-border/50 bg-background/40 px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
+                aria-label="Compare with another member's day"
+                title="Compare with a friend"
+              >
+                <GitCompare className="size-3" />
+                Compare
+              </button>
+            ) : null}
+          </div>
         )}
       </header>
 
@@ -433,12 +516,14 @@ export function MyDayTimeline({
             {placed.length === 0 && (
               <EmptyState
                 isViewingSelf={isViewingSelf}
+                isComparing={isComparing}
                 viewedMemberName={viewedMember?.name ?? null}
+                compareMemberName={compareMember?.name ?? null}
                 onCreateSidequest={
-                  isViewingSelf ? onCreateSidequest : undefined
+                  sessionUserOnScreen ? onCreateSidequest : undefined
                 }
                 onOpenWalkthrough={
-                  isViewingSelf ? onOpenWalkthrough : undefined
+                  sessionUserOnScreen ? onOpenWalkthrough : undefined
                 }
               />
             )}
@@ -465,8 +550,16 @@ export function MyDayTimeline({
                     membersById={data.membersById}
                     myMemberId={myMemberId}
                     viewedMemberId={effectiveViewedMemberId}
+                    compareContext={
+                      isComparing && viewedMember && compareMember
+                        ? {
+                            primary: viewedMember,
+                            compare: compareMember,
+                          }
+                        : null
+                    }
                     onEditSidequest={
-                      isViewingSelf ? onEditSidequest : undefined
+                      sessionUserOnScreen ? onEditSidequest : undefined
                     }
                     onOpenSpotMap={openSpotMap}
                     hideCoordinateLink={isFestivalDay}
@@ -490,33 +583,96 @@ export function MyDayTimeline({
   );
 }
 
+/**
+ * The dropdown used both for "view someone's day" and the compare
+ * partner selector. Pulled out so the two selects in compare mode
+ * stay visually consistent and the call-sites stay readable.
+ */
+function ViewerSelect({
+  value,
+  members,
+  myMemberId,
+  displayLabel,
+  displayColor,
+  onChange,
+  ariaLabel,
+}: {
+  value: string;
+  members: Member[];
+  myMemberId: Id<"members"> | null;
+  displayLabel: string;
+  displayColor: string;
+  onChange: (id: Id<"members">) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <Select
+      value={value}
+      onValueChange={(v) => onChange(v as Id<"members">)}
+    >
+      <SelectTrigger
+        className="h-7 w-auto gap-1.5 rounded-full border-border/50 bg-background/40 px-2 text-[11px]"
+        aria-label={ariaLabel}
+      >
+        <Eye className="size-3 shrink-0 text-muted-foreground" />
+        <SelectValue>
+          <span className="inline-flex items-center gap-1.5">
+            <MemberDot color={displayColor} size="xs" />
+            <span className="truncate">{displayLabel}</span>
+          </span>
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent align="end">
+        {members.map((m) => (
+          <SelectItem key={m._id} value={m._id}>
+            <span className="inline-flex items-center gap-1.5">
+              <MemberDot color={m.color} size="xs" />
+              <span>
+                {m._id === myMemberId ? `${m.name} (you)` : m.name}
+              </span>
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 function EmptyState({
   isViewingSelf,
+  isComparing,
   viewedMemberName,
+  compareMemberName,
   onCreateSidequest,
   onOpenWalkthrough,
 }: {
   isViewingSelf: boolean;
+  isComparing: boolean;
   viewedMemberName: string | null;
+  compareMemberName: string | null;
   onCreateSidequest?: () => void;
   onOpenWalkthrough?: () => void;
 }) {
+  const showActions =
+    Boolean(onCreateSidequest) || Boolean(onOpenWalkthrough);
   return (
     <div className="pointer-events-none absolute inset-x-3 top-6 rounded-md border border-dashed border-border/50 bg-background/40 px-4 py-6 text-center text-xs leading-relaxed text-muted-foreground">
       <Sparkles className="mx-auto mb-2 size-4 opacity-60" />
       <p className="font-medium text-foreground">
-        {isViewingSelf
-          ? "Nothing on your day yet"
-          : viewedMemberName
-            ? `${viewedMemberName} hasn't planned anything yet`
-            : "Nothing planned yet"}
+        {isComparing
+          ? `Nothing planned by ${viewedMemberName ?? "them"} or ${compareMemberName ?? "them"} yet`
+          : isViewingSelf
+            ? "Nothing on your day yet"
+            : viewedMemberName
+              ? `${viewedMemberName} hasn't planned anything yet`
+              : "Nothing planned yet"}
       </p>
       <p className="mt-1">
-        {isViewingSelf
+        {isViewingSelf || isComparing
           ? "Add picks on the Schedule view, plan a meetup on Coordinate, or propose a sidequest to fill this in."
           : "Once they pick artists, plan meetups, or RSVP to sidequests, you'll see them here."}
       </p>
-      {isViewingSelf && (
+      {showActions && (
         <div className="pointer-events-auto mt-3 flex flex-wrap items-center justify-center gap-2">
           {onOpenWalkthrough && (
             <button
@@ -544,11 +700,22 @@ function EmptyState({
   );
 }
 
+/**
+ * The two members being compared in compare mode. Cards consult this
+ * to render owner badges; when null the cards render in their normal
+ * single-viewer mode without ownership decoration.
+ */
+interface CompareContext {
+  primary: Member;
+  compare: Member;
+}
+
 function TimelineCard({
   event,
   membersById,
   myMemberId,
   viewedMemberId,
+  compareContext,
   onEditSidequest,
   onOpenSpotMap,
   hideCoordinateLink,
@@ -562,12 +729,19 @@ function TimelineCard({
    * the viewed perspective rather than the logged-in session.
    */
   viewedMemberId: Id<"members">;
+  compareContext: CompareContext | null;
   onEditSidequest?: (sidequest: Sidequest) => void;
   onOpenSpotMap: (label: string) => void;
   hideCoordinateLink: boolean;
 }) {
   if (event.kind === "artist") {
-    return <ArtistTimelineCard artist={event.artist} />;
+    return (
+      <ArtistTimelineCard
+        artist={event.artist}
+        ownerIds={event.ownerIds}
+        compareContext={compareContext}
+      />
+    );
   }
   if (event.kind === "meetup") {
     return (
@@ -576,6 +750,8 @@ function TimelineCard({
         spot={event.spot}
         membersById={membersById}
         viewedMemberId={viewedMemberId}
+        ownerIds={event.ownerIds}
+        compareContext={compareContext}
         onOpenSpotMap={onOpenSpotMap}
         hideCoordinateLink={hideCoordinateLink}
       />
@@ -586,12 +762,75 @@ function TimelineCard({
       sidequest={event.sidequest}
       membersById={membersById}
       myMemberId={myMemberId}
+      ownerIds={event.ownerIds}
+      compareContext={compareContext}
       onEdit={onEditSidequest}
     />
   );
 }
 
-function ArtistTimelineCard({ artist }: { artist: Artist }) {
+/**
+ * Small badge stack rendered in the top-right corner of compare-mode
+ * cards. Shows a member-color dot per owner, falling back to a
+ * "Both" label when both members own the event so the shared status
+ * is visually obvious without relying on color matching alone.
+ */
+function OwnerBadges({
+  ownerIds,
+  compareContext,
+}: {
+  ownerIds: Array<Id<"members">>;
+  compareContext: CompareContext | null;
+}) {
+  if (!compareContext) return null;
+  const ownsPrimary = ownerIds.includes(compareContext.primary._id);
+  const ownsCompare = ownerIds.includes(compareContext.compare._id);
+  if (!ownsPrimary && !ownsCompare) return null;
+  const both = ownsPrimary && ownsCompare;
+  const titleParts: string[] = [];
+  if (ownsPrimary) titleParts.push(compareContext.primary.name);
+  if (ownsCompare) titleParts.push(compareContext.compare.name);
+  return (
+    <span
+      className={cn(
+        "pointer-events-none inline-flex shrink-0 items-center gap-0.5 rounded-full bg-background/70 px-1 py-px text-[8px] font-semibold uppercase tracking-wide ring-1 ring-border/50 backdrop-blur-sm",
+        both && "text-foreground",
+      )}
+      title={
+        both ? `Shared with ${titleParts.join(" + ")}` : titleParts.join(" + ")
+      }
+      aria-label={
+        both
+          ? `Shared with ${titleParts.join(" and ")}`
+          : `Only ${titleParts.join(" and ")}`
+      }
+    >
+      {ownsPrimary && (
+        <span
+          className="size-1.5 rounded-full ring-1 ring-background/40"
+          style={{ backgroundColor: compareContext.primary.color }}
+        />
+      )}
+      {ownsCompare && (
+        <span
+          className="size-1.5 rounded-full ring-1 ring-background/40"
+          style={{ backgroundColor: compareContext.compare.color }}
+        />
+      )}
+      {both && <span className="ml-0.5">Both</span>}
+    </span>
+  );
+}
+
+function ArtistTimelineCard({
+  artist,
+  ownerIds,
+  compareContext,
+}: {
+  artist: Artist;
+  ownerIds: Array<Id<"members">>;
+  compareContext: CompareContext | null;
+}) {
   const palette = getStagePalette(artist.stage);
   return (
     <div
@@ -606,6 +845,7 @@ function ArtistTimelineCard({ artist }: { artist: Artist }) {
         <span className="truncate text-xs font-semibold leading-tight">
           {artist.name}
         </span>
+        <OwnerBadges ownerIds={ownerIds} compareContext={compareContext} />
       </div>
       <span
         className="inline-flex w-fit items-center gap-1 truncate text-[10px] font-medium"
@@ -629,6 +869,8 @@ function MeetupTimelineCard({
   spot,
   membersById,
   viewedMemberId,
+  ownerIds,
+  compareContext,
   onOpenSpotMap,
   hideCoordinateLink,
 }: {
@@ -637,12 +879,23 @@ function MeetupTimelineCard({
   membersById: Map<string, Member>;
   /** Whose perspective we're rendering — used to filter "others". */
   viewedMemberId: Id<"members">;
+  ownerIds: Array<Id<"members">>;
+  compareContext: CompareContext | null;
   onOpenSpotMap: (label: string) => void;
   hideCoordinateLink: boolean;
 }) {
   const palette = getStagePalette(conv.destinationStage);
+  // In compare mode "others" is everyone in the convergence besides
+  // the two compared members, so the chips don't redundantly echo the
+  // members already called out in the OwnerBadges. In single mode we
+  // keep the existing behaviour (everyone but the viewed member).
+  const excluded = new Set<string>(
+    compareContext
+      ? [compareContext.primary._id, compareContext.compare._id]
+      : [viewedMemberId],
+  );
   const others = conv.memberIds
-    .filter((id) => id !== viewedMemberId)
+    .filter((id) => !excluded.has(id))
     .map((id) => membersById.get(id))
     .filter((m): m is Member => Boolean(m));
   const focusKey = meetupKey(
@@ -672,10 +925,16 @@ function MeetupTimelineCard({
           )}
           aria-label={`Meetup heading to ${conv.destinationArtist.name}`}
         >
-          <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide text-emerald-300">
-            <Users className="size-2.5" />
-            Meetup
-          </span>
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide text-emerald-300">
+              <Users className="size-2.5" />
+              Meetup
+            </span>
+            <OwnerBadges
+              ownerIds={ownerIds}
+              compareContext={compareContext}
+            />
+          </div>
           <span className="truncate text-xs font-semibold leading-tight">
             {spot?.label ?? "Pick a spot"}
           </span>
@@ -795,11 +1054,15 @@ function SidequestTimelineCard({
   sidequest,
   membersById,
   myMemberId,
+  ownerIds,
+  compareContext,
   onEdit,
 }: {
   sidequest: Sidequest;
   membersById: Map<string, Member>;
   myMemberId: Id<"members"> | null;
+  ownerIds: Array<Id<"members">>;
+  compareContext: CompareContext | null;
   onEdit?: (sidequest: Sidequest) => void;
 }) {
   const creator = membersById.get(sidequest.createdByMemberId);
@@ -831,10 +1094,16 @@ function SidequestTimelineCard({
           style={{ borderLeft: `3px solid ${accent}` }}
           aria-label={`Sidequest: ${sidequest.title}`}
         >
-          <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide text-violet-300">
-            <UserPlus className="size-2.5" />
-            Sidequest
-          </span>
+          <div className="flex items-start justify-between gap-1.5">
+            <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide text-violet-300">
+              <UserPlus className="size-2.5" />
+              Sidequest
+            </span>
+            <OwnerBadges
+              ownerIds={ownerIds}
+              compareContext={compareContext}
+            />
+          </div>
           <span className="truncate text-xs font-semibold leading-tight">
             {sidequest.title}
           </span>

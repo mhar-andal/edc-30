@@ -1,14 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
+import { useMutation } from "convex/react";
 import {
   CalendarClock,
   LayoutGrid,
   Loader2,
   Map as MapIcon,
   Plus,
+  RotateCcw,
   Search,
   Sparkles,
   X,
 } from "lucide-react";
+import { api } from "../../convex/_generated/api";
+import { useIsOffline } from "@/lib/useIsOffline";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -127,6 +131,9 @@ export default function Schedule() {
     isTourInProgress(),
   );
   const [mapDialogOpen, setMapDialogOpen] = useState(false);
+  const clearPicksForDay = useMutation(api.memberSelections.clearForDay);
+  const offline = useIsOffline();
+  const [resettingDay, setResettingDay] = useState<DayKey | null>(null);
 
   useEffect(() => {
     try {
@@ -184,6 +191,41 @@ export default function Schedule() {
       /* no-op */
     }
     setFirstRunOpen(true);
+  }
+
+  // Count of the signed-in member's picks on the currently visible
+  // day. Powers the "Reset day's picks" button copy and gates whether
+  // it shows up at all (no point offering a reset on a day with no
+  // picks).
+  const myDayPickCount = useMemo(() => {
+    if (!myMemberId) return 0;
+    const myPicks = data.selectionsByMember.get(myMemberId);
+    if (!myPicks || myPicks.size === 0) return 0;
+    const dayList = data.artistsByDay.get(day) ?? [];
+    let n = 0;
+    for (const a of dayList) if (myPicks.has(a._id)) n++;
+    return n;
+  }, [myMemberId, data.selectionsByMember, data.artistsByDay, day]);
+
+  async function handleResetDayPicks() {
+    if (!myMemberId || offline) return;
+    if (myDayPickCount === 0) return;
+    if (resettingDay !== null) return;
+    const dayLabel = `${DAY_LABELS[day].full} (${DAY_LABELS[day].date})`;
+    const ok = window.confirm(
+      `Remove your ${myDayPickCount} pick${
+        myDayPickCount === 1 ? "" : "s"
+      } for ${dayLabel}? Your other days stay untouched.`,
+    );
+    if (!ok) return;
+    setResettingDay(day);
+    try {
+      await clearPicksForDay({ memberId: myMemberId, day });
+    } catch (err) {
+      console.error("Failed to clear picks for day", err);
+    } finally {
+      setResettingDay(null);
+    }
   }
 
   const matchedArtistIds = useMemo(() => {
@@ -292,6 +334,31 @@ export default function Schedule() {
             <MapIcon className="size-3" />
             View map
           </button>
+          {myMemberId && myDayPickCount > 0 && (
+            <button
+              type="button"
+              onClick={() => void handleResetDayPicks()}
+              disabled={offline || resettingDay !== null}
+              className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border/60 bg-card/40 px-3 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-card/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+              title={
+                offline
+                  ? "Offline — reconnect to reset"
+                  : `Remove your ${myDayPickCount} pick${
+                      myDayPickCount === 1 ? "" : "s"
+                    } on ${DAY_LABELS[day].full}`
+              }
+            >
+              {resettingDay === day ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <RotateCcw className="size-3" />
+              )}
+              Reset {DAY_LABELS[day].short}
+              <span className="rounded-full bg-secondary px-1.5 text-[10px] font-semibold text-foreground">
+                {myDayPickCount}
+              </span>
+            </button>
+          )}
           {myMemberId && (
             <button
               type="button"
