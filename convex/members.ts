@@ -125,6 +125,21 @@ export const remove = mutation({
       .collect();
     for (const r of myRsvps) await ctx.db.delete(r._id);
 
+    // Bell notifications: tear down both the inbox (where this
+    // member was the recipient) and the outbox (where they authored
+    // a comment that mentioned someone). Leaving them around would
+    // crash the bell renderer once the member doc disappears.
+    const inbox = await ctx.db
+      .query("notifications")
+      .withIndex("by_recipient", (q) => q.eq("recipientMemberId", memberId))
+      .collect();
+    for (const n of inbox) await ctx.db.delete(n._id);
+    const outbox = await ctx.db
+      .query("notifications")
+      .withIndex("by_author", (q) => q.eq("authorMemberId", memberId))
+      .collect();
+    for (const n of outbox) await ctx.db.delete(n._id);
+
     await ctx.db.delete(memberId);
   },
 });

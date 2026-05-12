@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { mentionedMemberIdsFromBody } from "./mentions";
+import { recordMentionNotifications } from "./notifications";
 
 const ownerTypeValidator = v.union(
   v.literal("sidequest"),
@@ -101,7 +102,7 @@ export const add = mutation({
     ) as Array<Id<"members">>;
 
     const now = Date.now();
-    return await ctx.db.insert("comments", {
+    const commentId = await ctx.db.insert("comments", {
       ownerType,
       ownerId,
       authorMemberId,
@@ -109,6 +110,21 @@ export const add = mutation({
       mentionedMemberIds: mentionedIds,
       createdAt: now,
     });
+
+    // Fan out one notification per mentioned member (excluding the
+    // author) so the bell badge updates immediately. Done after the
+    // insert so the notification can pin to the real comment row id.
+    if (mentionedIds.length > 0) {
+      const inserted = await ctx.db.get(commentId);
+      if (inserted) {
+        await recordMentionNotifications(ctx, {
+          comment: inserted,
+          recipients: mentionedIds,
+        });
+      }
+    }
+
+    return commentId;
   },
 });
 
@@ -123,6 +139,13 @@ export const remove = mutation({
     if (existing.authorMemberId !== memberId) {
       throw new Error("You can only delete your own comments.");
     }
+    // Cascade any notifications that pointed at this comment so we
+    // don't leave dangling rows in recipients' bell lists.
+    const linkedNotifications = await ctx.db
+      .query("notifications")
+      .withIndex("by_comment", (q) => q.eq("commentId", commentId))
+      .collect();
+    for (const n of linkedNotifications) await ctx.db.delete(n._id);
     await ctx.db.delete(commentId);
   },
 });

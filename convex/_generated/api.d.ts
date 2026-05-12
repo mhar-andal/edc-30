@@ -15,6 +15,7 @@ import type * as meetups from "../meetups.js";
 import type * as memberSelections from "../memberSelections.js";
 import type * as members from "../members.js";
 import type * as mentions from "../mentions.js";
+import type * as notifications from "../notifications.js";
 import type * as seed from "../seed.js";
 import type * as sidequests from "../sidequests.js";
 import type * as spots from "../spots.js";
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   memberSelections: typeof memberSelections;
   members: typeof members;
   mentions: typeof mentions;
+  notifications: typeof notifications;
   seed: typeof seed;
   sidequests: typeof sidequests;
   spots: typeof spots;

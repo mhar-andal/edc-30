@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import {
   Check,
+  ChevronDown,
   ChevronRight,
   Clock,
+  Copy,
   Loader2,
   MapPin,
   Plus,
@@ -132,12 +134,36 @@ export function FirstRunPicker({
   sidequestsByDay,
 }: Props) {
   const toggle = useMutation(api.memberSelections.toggle);
+  const addManyPicks = useMutation(api.memberSelections.addMany);
   const joinSidequest = useMutation(api.sidequests.join);
   const leaveSidequest = useMutation(api.sidequests.leave);
   const offline = useIsOffline();
   const [busyArtistId, setBusyArtistId] = useState<Id<"artists"> | null>(null);
   const [busySidequestId, setBusySidequestId] =
     useState<Id<"sidequests"> | null>(null);
+  // While a "copy picks" request is in flight we lock the arrival
+  // step so the user can't double-trigger or jump ahead before the
+  // server confirms the inserts.
+  const [copyBusyMemberId, setCopyBusyMemberId] =
+    useState<Id<"members"> | null>(null);
+  // Transient toast-style confirmation rendered at the top of the
+  // arrival step after a successful copy. Auto-dismisses; bumping
+  // `nonce` re-arms the auto-dismiss timer for back-to-back copies.
+  const [copyToast, setCopyToast] = useState<{
+    fromName: string;
+    added: number;
+    skipped: number;
+    nonce: number;
+  } | null>(null);
+  // Whether the outer "Copy day from a friend" section is open. We
+  // default to collapsed so the arrival step stays compact for
+  // first-time users.
+  const [donorsOpen, setDonorsOpen] = useState(false);
+  // Single-friend expand state for the per-donor pick preview. Only
+  // one donor's pick list is shown at a time to keep scroll under
+  // control on small dialogs.
+  const [expandedDonorId, setExpandedDonorId] =
+    useState<Id<"members"> | null>(null);
   const [phase, setPhase] = useState<Phase>(() => ({
     kind: "arrival",
     dayIndex: dayIndexOf(currentDay),
@@ -169,7 +195,27 @@ export function FirstRunPicker({
     if (!open) return;
     setPhase({ kind: "arrival", dayIndex: dayIndexOf(currentDayRef.current) });
     setArrivalsByDay(new Map());
+    setCopyToast(null);
+    setDonorsOpen(false);
+    setExpandedDonorId(null);
   }, [open]);
+
+  // When the user advances to a new day, collapse the per-donor
+  // preview so a friend they peeked at yesterday doesn't stay open
+  // for an unrelated day's list.
+  useEffect(() => {
+    if (phase.kind !== "arrival") return;
+    setExpandedDonorId(null);
+  }, [phase.kind === "arrival" ? phase.dayIndex : -1]);
+
+  // Auto-dismiss the copy confirmation after a few seconds. `nonce`
+  // is bumped on each copy so a follow-up copy resets the timer
+  // instead of inheriting the previous toast's expiry.
+  useEffect(() => {
+    if (!copyToast) return;
+    const t = setTimeout(() => setCopyToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [copyToast?.nonce, copyToast]);
 
   // Seed the arrival input each time we land on the arrival phase.
   useEffect(() => {
@@ -188,6 +234,53 @@ export function FirstRunPicker({
     if (!el) return;
     el.scrollTop = 0;
   }, [open, phase]);
+
+  /**
+   * Other members who have at least one pick on a given day. Powers
+   * the "Copy day's picks from someone" affordance on the arrival
+   * step — sorted by pick count desc, then name asc, so the friend
+   * with the most-fleshed-out plan surfaces first. Each entry also
+   * carries the resolved Artist objects (sorted by start time) so
+   * the per-friend expand panel can preview the picks without
+   * another lookup.
+   */
+  const donorsByDay = useMemo<
+    Map<DayKey, Array<{ member: Member; artists: Artist[] }>>
+  >(() => {
+    const out = new Map<
+      DayKey,
+      Array<{ member: Member; artists: Artist[] }>
+    >();
+    for (const day of DAYS) {
+      const dayArtists = artistsByDay.get(day) ?? [];
+      const dayArtistById = new Map<string, Artist>();
+      for (const a of dayArtists) dayArtistById.set(a._id as string, a);
+      const list: Array<{ member: Member; artists: Artist[] }> = [];
+      for (const [memberId, picks] of selectionsByMember.entries()) {
+        if (memberId === myMemberId) continue;
+        const inDay: Artist[] = [];
+        for (const pid of picks) {
+          const artist = dayArtistById.get(pid);
+          if (artist) inDay.push(artist);
+        }
+        if (inDay.length === 0) continue;
+        const member = membersById.get(memberId);
+        if (!member) continue;
+        inDay.sort(
+          (a, b) =>
+            a.startMs - b.startMs || a.stage.localeCompare(b.stage),
+        );
+        list.push({ member, artists: inDay });
+      }
+      list.sort(
+        (a, b) =>
+          b.artists.length - a.artists.length ||
+          a.member.name.localeCompare(b.member.name),
+      );
+      out.set(day, list);
+    }
+    return out;
+  }, [artistsByDay, selectionsByMember, myMemberId, membersById]);
 
   const slotsByDay = useMemo<Map<DayKey, Slot[]>>(() => {
     const out = new Map<DayKey, Slot[]>();
@@ -327,6 +420,53 @@ export function FirstRunPicker({
     }
   }
 
+  /**
+   * Copies a friend's picks for the day the arrival phase is sitting
+   * on, then jumps ahead to the next day's arrival (or completes the
+   * walkthrough if this was the last day). The user explicitly opted
+   * into this shortcut, so we skip the slot-by-slot review — they
+   * can always re-enter quick pick or tweak directly on the schedule.
+   */
+  async function handleCopyFromMember(
+    member: Member,
+    artists: Artist[],
+  ) {
+    if (!myMemberId || offline) return;
+    if (copyBusyMemberId) return;
+    if (phase.kind !== "arrival") return;
+    if (artists.length === 0) return;
+    setCopyBusyMemberId(member._id);
+    try {
+      const artistIds = artists.map((a) => a._id as Id<"artists">);
+      const result = await addManyPicks({
+        memberId: myMemberId,
+        artistIds,
+      });
+      const added = result?.added ?? 0;
+      const skipped = artistIds.length - added;
+      setCopyToast({
+        fromName: member.name,
+        added,
+        skipped,
+        nonce: Date.now(),
+      });
+      const nextDayIdx = phase.dayIndex + 1;
+      if (nextDayIdx < DAYS.length) {
+        // Move on right away; the toast persists across the page
+        // change and the user sees it on the next day's arrival step.
+        setPhase({ kind: "arrival", dayIndex: nextDayIdx });
+      } else {
+        // Last day: hold the dialog open briefly so the user can
+        // actually read the confirmation, then close.
+        setTimeout(() => {
+          complete();
+        }, 1500);
+      }
+    } finally {
+      setCopyBusyMemberId(null);
+    }
+  }
+
   async function handleToggle(artistId: Id<"artists">) {
     if (!myMemberId || offline) return;
     setBusyArtistId(artistId);
@@ -382,6 +522,8 @@ export function FirstRunPicker({
     const day = DAYS[phase.dayIndex];
     const dayLabel = DAY_LABELS[day];
     const totalDays = DAYS.length;
+    const donors = donorsByDay.get(day) ?? [];
+    const isCopying = copyBusyMemberId !== null;
     return (
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
         <DialogContent
@@ -407,6 +549,38 @@ export function FirstRunPicker({
             </DialogDescription>
           </DialogHeader>
 
+          {copyToast && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mx-5 mt-3 flex items-start gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100"
+            >
+              <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-300" />
+              <div className="min-w-0 flex-1">
+                <div className="font-medium">
+                  {copyToast.added > 0
+                    ? `Copied ${copyToast.added} pick${
+                        copyToast.added === 1 ? "" : "s"
+                      } from ${copyToast.fromName}`
+                    : `${copyToast.fromName}'s picks were already on your schedule`}
+                </div>
+                {copyToast.skipped > 0 && copyToast.added > 0 && (
+                  <div className="text-[11px] text-emerald-200/80">
+                    {copyToast.skipped} already on your schedule, skipped.
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setCopyToast(null)}
+                className="-mr-1 -mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded text-emerald-200/70 transition-colors hover:bg-emerald-500/15 hover:text-emerald-100"
+                aria-label="Dismiss"
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          )}
+
           <div className="space-y-2 px-5 py-4">
             <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               <Clock className="size-3" />
@@ -426,10 +600,145 @@ export function FirstRunPicker({
             </Select>
           </div>
 
+          {donors.length > 0 && (
+            <div className="border-t border-border/40 px-5 py-3">
+              <button
+                type="button"
+                onClick={() => setDonorsOpen((o) => !o)}
+                aria-expanded={donorsOpen ? "true" : "false"}
+                className="flex w-full items-center justify-between gap-2 rounded-md px-1 py-1.5 text-left transition-colors hover:bg-secondary/40"
+              >
+                <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <Copy className="size-3" />
+                  Copy {dayLabel.short} from a friend
+                  <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-muted-foreground">
+                    {donors.length}
+                  </span>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "size-3.5 text-muted-foreground transition-transform",
+                    donorsOpen && "rotate-180",
+                  )}
+                />
+              </button>
+              {donorsOpen && (
+                <ul className="mt-2 space-y-1.5">
+                  {donors.map(({ member, artists }) => {
+                    const isThis = copyBusyMemberId === member._id;
+                    const isExpanded = expandedDonorId === member._id;
+                    return (
+                      <li
+                        key={member._id}
+                        className="overflow-hidden rounded-lg border border-border/60 bg-card/40"
+                      >
+                        <div className="flex items-center gap-1 px-1 py-1">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedDonorId((cur) =>
+                                cur === member._id ? null : member._id,
+                              )
+                            }
+                            aria-expanded={isExpanded ? "true" : "false"}
+                            aria-label={`Show ${member.name}'s picks`}
+                            className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-secondary/50"
+                          >
+                            <ChevronDown
+                              className={cn(
+                                "size-3.5 shrink-0 text-muted-foreground transition-transform",
+                                isExpanded && "rotate-180",
+                              )}
+                            />
+                            <span
+                              aria-hidden
+                              className="size-2 shrink-0 rounded-full"
+                              style={{ backgroundColor: member.color }}
+                            />
+                            <span className="truncate text-sm font-medium">
+                              {member.name}
+                            </span>
+                            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                              · {artists.length} pick
+                              {artists.length === 1 ? "" : "s"}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!myMemberId || offline || isCopying}
+                            onClick={() =>
+                              void handleCopyFromMember(member, artists)
+                            }
+                            title={
+                              offline
+                                ? "Offline — reconnect to copy"
+                                : `Copy ${member.name}'s picks for ${dayLabel.short}`
+                            }
+                            className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-border/60 bg-background/40 px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {isThis ? (
+                              <Loader2 className="size-3 animate-spin" />
+                            ) : (
+                              <Copy className="size-3" />
+                            )}
+                            Copy
+                          </button>
+                        </div>
+                        {isExpanded && (
+                          <ul className="max-h-56 space-y-1 overflow-y-auto border-t border-border/40 bg-background/30 px-2 py-2">
+                            {artists.map((a) => {
+                              const palette = getStagePalette(a.stage);
+                              const youHave = myPickedSet.has(a._id);
+                              return (
+                                <li
+                                  key={a._id}
+                                  className="flex items-center gap-2 rounded-md px-1.5 py-1 text-[11px]"
+                                >
+                                  <span
+                                    aria-hidden
+                                    className="size-1.5 shrink-0 rounded-full"
+                                    style={{
+                                      backgroundColor: `rgb(${palette.rgb})`,
+                                    }}
+                                  />
+                                  <span className="w-20 shrink-0 tabular-nums text-muted-foreground">
+                                    {formatTime(a.startMs)}
+                                  </span>
+                                  <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                                    {a.name}
+                                  </span>
+                                  <span
+                                    className="shrink-0 truncate text-[10px]"
+                                    style={{ color: `rgb(${palette.rgb})` }}
+                                  >
+                                    {a.stage}
+                                  </span>
+                                  {youHave && (
+                                    <span
+                                      title="You already picked this"
+                                      className="ml-1 inline-flex items-center gap-0.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-medium text-primary"
+                                    >
+                                      <Check className="size-2.5" />
+                                      Yours
+                                    </span>
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2 border-t border-border/40 bg-background/40 px-4 py-3">
             <Button
               onClick={commitArrival}
-              disabled={!arrivalDraft}
+              disabled={!arrivalDraft || isCopying}
               className="w-full"
               size="lg"
             >

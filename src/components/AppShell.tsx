@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { ColorPicker } from "@/components/ColorPicker";
+import { NotificationsBell } from "@/components/notifications/NotificationsBell";
 import { MEMBER_PALETTE } from "@/lib/colors";
 import { useCachedQuery } from "@/lib/useCachedQuery";
 import { cn } from "@/lib/utils";
@@ -72,11 +73,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-2">
             <OfflineBadge />
             {session.status === "authed" && (
-              <MemberMenu
-                memberId={session.memberId}
-                memberName={session.memberName}
-                memberColor={session.memberColor}
-              />
+              <>
+                <NotificationsBell myMemberId={session.memberId} />
+                <MemberMenu
+                  memberId={session.memberId}
+                  memberName={session.memberName}
+                  memberColor={session.memberColor}
+                />
+              </>
             )}
           </div>
         </div>

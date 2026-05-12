@@ -1,20 +1,39 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "convex/react";
-import type { FunctionReference, FunctionReturnType } from "convex/server";
+import {
+  getFunctionName,
+  type FunctionReference,
+  type FunctionReturnType,
+} from "convex/server";
 import { loadCached, makeCacheKey, saveCached } from "./offlineCache";
 
 type QueryRef = FunctionReference<"query">;
 
+/**
+ * Pull a stable string identifier out of a Convex query reference so
+ * we can scope the IDB cache key per-query.
+ *
+ * IMPORTANT: `api.foo.bar` is a Convex `anyApi` Proxy. Property
+ * accesses like `query._name` return *another* Proxy rather than a
+ * string, and `JSON.stringify(query)` collapses the Proxy down to
+ * `"{}"` because the underlying target is empty. If we used either
+ * of those, every cached query with the same args would collide on
+ * the same IDB key — letting (for example) a `number` returned by
+ * one query clobber an `Array` returned by another. Convex exposes
+ * `getFunctionName` exactly for this purpose; it walks the Proxy
+ * via the internal `functionName` symbol and returns the canonical
+ * `"module:function"` string.
+ */
 function getQueryName(query: QueryRef): string {
-  const name = (
-    query as unknown as {
-      _name?: string;
-      _functionPath?: string;
-      _functionId?: string;
-    }
-  )._name;
-  if (typeof name === "string") return name;
-  return JSON.stringify(query);
+  try {
+    return getFunctionName(query);
+  } catch {
+    // The fallback covers exotic refs (mocks, mid-test stubs, etc.).
+    // It still scopes by reference identity so different queries
+    // never share a cache slot, even if they happen to have the
+    // same args object.
+    return `unnamed:${(query as unknown as { _id?: string })._id ?? Math.random()}`;
+  }
 }
 
 export function useCachedQuery<Q extends QueryRef>(
