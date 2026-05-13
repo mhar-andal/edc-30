@@ -48,6 +48,7 @@ export default function Onboarding() {
   const [pendingSignInMember, setPendingSignInMember] = useState<{
     _id: Id<"members">;
     name: string;
+    color: string;
   } | null>(null);
 
   useEffect(() => {
@@ -109,14 +110,21 @@ export default function Onboarding() {
     writeStored({
       memberId: signInTarget._id,
       memberName: signInTarget.name,
+      // Persist the color too so a swipe-up-then-cold-open offline
+      // boot can render the header / chips without waiting on Convex.
+      memberColor: signInTarget.color,
     });
     setSignInOpen(false);
     setPendingSignInMember(null);
     navigate("/schedule", { replace: true });
   }
 
-  function startSignInFromChip(m: { _id: Id<"members">; name: string }) {
-    setPendingSignInMember({ _id: m._id, name: m.name });
+  function startSignInFromChip(m: {
+    _id: Id<"members">;
+    name: string;
+    color: string;
+  }) {
+    setPendingSignInMember({ _id: m._id, name: m.name, color: m.color });
     setSignInOpen(true);
   }
 
@@ -134,7 +142,11 @@ export default function Onboarding() {
         name: trimmedName,
         color: memberColor,
       });
-      writeStored({ memberId, memberName: trimmedName });
+      writeStored({
+        memberId,
+        memberName: trimmedName,
+        memberColor,
+      });
       navigate("/schedule", { replace: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong";
@@ -200,7 +212,11 @@ export default function Onboarding() {
                   key={m._id}
                   type="button"
                   onClick={() =>
-                    startSignInFromChip({ _id: m._id, name: m.name })
+                    startSignInFromChip({
+                      _id: m._id,
+                      name: m.name,
+                      color: m.color,
+                    })
                   }
                   title={`Sign in as ${m.name}`}
                   className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/40 px-2 py-0.5 transition-colors hover:bg-background hover:text-foreground hover:ring-1 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
