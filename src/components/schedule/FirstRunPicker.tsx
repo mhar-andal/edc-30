@@ -1000,10 +1000,25 @@ export function FirstRunPicker({
                 const pickedIds = selectionsByArtist.get(a._id) ?? [];
                 const youPicked = !!myMemberId && myPickedSet.has(a._id);
                 const isBusy = busyArtistId === a._id;
-                const otherPickers = pickedIds
-                  .filter((id) => id !== myMemberId)
-                  .map((id) => membersById.get(id))
-                  .filter((m): m is Member => Boolean(m));
+                // Match the Schedule view's attendee strip: include
+                // the session user with an "isYou" highlight so the
+                // walkthrough renders the same social info as the
+                // grid, instead of silently dropping you from the row.
+                const allAttendees = pickedIds
+                  .map((id) => {
+                    const m = membersById.get(id);
+                    if (!m) return null;
+                    return { id, member: m, isYou: id === myMemberId };
+                  })
+                  .filter(
+                    (
+                      x,
+                    ): x is {
+                      id: Id<"members">;
+                      member: Member;
+                      isYou: boolean;
+                    } => x !== null,
+                  );
 
                 return (
                   <button
@@ -1086,22 +1101,24 @@ export function FirstRunPicker({
                         {youPicked ? "Picked" : "Pick"}
                       </div>
                     </div>
-                    {otherPickers.length > 0 && (
-                      <div className="mt-1 flex flex-wrap items-center gap-1">
-                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                          Going:
+                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
+                      {allAttendees.length === 0 ? (
+                        <span className="text-[10px] text-muted-foreground/70">
+                          {myMemberId ? "Be the first" : "No picks yet"}
                         </span>
-                        {otherPickers.map((m) => (
+                      ) : (
+                        allAttendees.map(({ id, member, isYou }) => (
                           <MemberChip
-                            key={m._id}
-                            name={m.name}
-                            color={m.color}
+                            key={id}
+                            name={member.name}
+                            color={member.color}
                             size="xs"
+                            isYou={isYou}
                             truncate
                           />
-                        ))}
-                      </div>
-                    )}
+                        ))
+                      )}
+                    </div>
                   </button>
                 );
               })}
