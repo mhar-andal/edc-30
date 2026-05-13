@@ -6,19 +6,18 @@ import {
   Loader2,
   Plus,
 } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { api } from "../../../convex/_generated/api";
 import type { Id, Doc } from "../../../convex/_generated/dataModel";
-import { MemberChip } from "@/components/MemberChip";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { AttendeesStrip } from "./AttendeesStrip";
 import { ChooseNextDialog } from "./ChooseNextDialog";
 import { getStagePalette } from "@/lib/colors";
 import { formatTime } from "@/lib/time";
-import { useAutoScroll } from "@/lib/useAutoScroll";
 import { useIsOffline } from "@/lib/useIsOffline";
 import type { Artist, Member } from "@/lib/useScheduleData";
 import { cn } from "@/lib/utils";
@@ -220,17 +219,11 @@ export function ArtistCard({
         </Popover>
       )}
       <div className="mt-1 flex min-w-0 items-center">
-        {pickedByMemberIds.length === 0 ? (
-          <span className="text-[10px] text-muted-foreground/70">
-            {myMemberId ? "Be the first" : "No picks yet"}
-          </span>
-        ) : (
-          <AttendeesStrip
-            pickedByMemberIds={pickedByMemberIds}
-            membersById={membersById}
-            myMemberId={myMemberId}
-          />
-        )}
+        <AttendeesStrip
+          pickedByMemberIds={pickedByMemberIds}
+          membersById={membersById}
+          myMemberId={myMemberId}
+        />
       </div>
       {canChooseNext && (
         <button
@@ -303,95 +296,3 @@ function OverlapPopoverContent({
   );
 }
 
-function AttendeesStrip({
-  pickedByMemberIds,
-  membersById,
-  myMemberId,
-}: {
-  pickedByMemberIds: ReadonlyArray<Id<"members">>;
-  membersById: Map<string, Member>;
-  myMemberId: Id<"members"> | null;
-}) {
-  const [overflows, setOverflows] = useState(false);
-  const firstSetRef = useRef<HTMLDivElement | null>(null);
-  const secondSetRef = useRef<HTMLDivElement | null>(null);
-  const ref = useAutoScroll<HTMLDivElement>({
-    endBehavior: overflows ? "loop" : "reset",
-    // The two copies are separated by the outer `gap-1` (4px), so
-    // `scrollWidth / 2` is ~2px short of the true seamless wrap point.
-    // Measuring the second copy's position gives a pixel-accurate loop
-    // distance and eliminates the visible jitter on every cycle — most
-    // obvious on narrow mobile rows with just a few attendees.
-    getLoopWidth: () => {
-      const first = firstSetRef.current;
-      const second = secondSetRef.current;
-      if (!first || !second) return null;
-      return second.offsetLeft - first.offsetLeft;
-    },
-  });
-
-  const chips = pickedByMemberIds
-    .map((mid) => {
-      const m = membersById.get(mid);
-      if (!m) return null;
-      return { mid, member: m, isYou: mid === myMemberId };
-    })
-    .filter((x): x is { mid: Id<"members">; member: Member; isYou: boolean } => x !== null);
-
-  // Track whether the first chip set actually overflows the visible
-  // strip width. We only render the duplicate set when it does, so
-  // non-overflowing rows don't visually duplicate every name.
-  useLayoutEffect(() => {
-    const container = ref.current;
-    const firstSet = firstSetRef.current;
-    if (!container || !firstSet) return;
-    function check() {
-      if (!container || !firstSet) return;
-      setOverflows(firstSet.scrollWidth > container.clientWidth + 1);
-    }
-    const ro = new ResizeObserver(check);
-    ro.observe(container);
-    ro.observe(firstSet);
-    check();
-    return () => ro.disconnect();
-  }, [ref, chips.length]);
-
-  return (
-    <div
-      ref={ref}
-      onClick={(e) => e.stopPropagation()}
-      className="-mx-0.5 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      <div ref={firstSetRef} className="flex shrink-0 items-center gap-1">
-        {chips.map(({ mid, member, isYou }) => (
-          <MemberChip
-            key={mid}
-            name={member.name}
-            color={member.color}
-            size="xs"
-            isYou={isYou}
-            className="shrink-0"
-          />
-        ))}
-      </div>
-      {overflows && (
-        <div
-          ref={secondSetRef}
-          aria-hidden
-          className="flex shrink-0 items-center gap-1"
-        >
-          {chips.map(({ mid, member, isYou }) => (
-            <MemberChip
-              key={`dup-${mid}`}
-              name={member.name}
-              color={member.color}
-              size="xs"
-              isYou={isYou}
-              className="shrink-0"
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
