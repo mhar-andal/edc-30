@@ -513,6 +513,7 @@ export default function Schedule() {
         )}
 
         {view === "schedule" && mobileTab === "artists" && !search.trim() && (
+          <div className="flex justify-end">
           <div
             role="tablist"
             aria-label="Artist layout"
@@ -544,6 +545,7 @@ export default function Schedule() {
                 </button>
               );
             })}
+          </div>
           </div>
         )}
 
