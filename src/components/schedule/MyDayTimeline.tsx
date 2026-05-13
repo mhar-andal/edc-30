@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
+import { useMutation } from "convex/react";
 import { Link } from "react-router-dom";
 import {
+  AlertTriangle,
   CalendarPlus,
   Clock,
   Eye,
   GitCompare,
+  Loader2,
   MapPin,
   Sparkles,
+  Trash2,
   UserPlus,
   Users,
   X,
@@ -44,6 +48,7 @@ import {
   type Convergence,
 } from "@/lib/coordinate";
 import { useCachedQuery } from "@/lib/useCachedQuery";
+import { useIsOffline } from "@/lib/useIsOffline";
 import { api } from "../../../convex/_generated/api";
 import type { Id, Doc } from "../../../convex/_generated/dataModel";
 import type {
@@ -350,6 +355,17 @@ export function MyDayTimeline({
   }, [day, data, viewedMemberId, compareWithMemberId, allMeetups]);
 
   const placed = useMemo(() => layoutEvents(events), [events]);
+  // Sidequests the session user has joined on the visible day. Used
+  // by ArtistTimelineCard to surface an amber "you've also joined a
+  // sidequest at this time" warning inside the artist popover, the
+  // same conflict signal the schedule view + quick-pick walkthrough
+  // already render. Computed once here rather than per-card.
+  const myJoinedSidequestsToday = useMemo<Sidequest[]>(() => {
+    if (!myMemberId) return [];
+    return (data.sidequestsByDay.get(day) ?? []).filter((sq) =>
+      sq.participantMemberIds.includes(myMemberId),
+    );
+  }, [data.sidequestsByDay, day, myMemberId]);
   const counts = useMemo(() => {
     let artists = 0;
     let meetups = 0;
@@ -548,6 +564,7 @@ export function MyDayTimeline({
                   <TimelineCard
                     event={event}
                     membersById={data.membersById}
+                    selectionsByArtist={data.selectionsByArtist}
                     myMemberId={myMemberId}
                     viewedMemberId={effectiveViewedMemberId}
                     compareContext={
@@ -558,6 +575,7 @@ export function MyDayTimeline({
                           }
                         : null
                     }
+                    myJoinedSidequestsToday={myJoinedSidequestsToday}
                     onEditSidequest={
                       sessionUserOnScreen ? onEditSidequest : undefined
                     }
@@ -713,15 +731,18 @@ interface CompareContext {
 function TimelineCard({
   event,
   membersById,
+  selectionsByArtist,
   myMemberId,
   viewedMemberId,
   compareContext,
+  myJoinedSidequestsToday,
   onEditSidequest,
   onOpenSpotMap,
   hideCoordinateLink,
 }: {
   event: TimelineEvent;
   membersById: Map<string, Member>;
+  selectionsByArtist: Map<string, Array<Id<"members">>>;
   myMemberId: Id<"members">;
   /**
    * The member whose day we're showing right now. Used by meetup
@@ -730,6 +751,8 @@ function TimelineCard({
    */
   viewedMemberId: Id<"members">;
   compareContext: CompareContext | null;
+  /** Pre-filtered to the session user, scoped to the visible day. */
+  myJoinedSidequestsToday: Sidequest[];
   onEditSidequest?: (sidequest: Sidequest) => void;
   onOpenSpotMap: (label: string) => void;
   hideCoordinateLink: boolean;
@@ -740,6 +763,10 @@ function TimelineCard({
         artist={event.artist}
         ownerIds={event.ownerIds}
         compareContext={compareContext}
+        membersById={membersById}
+        selectionsByArtist={selectionsByArtist}
+        myMemberId={myMemberId}
+        myJoinedSidequestsToday={myJoinedSidequestsToday}
       />
     );
   }
@@ -826,41 +853,187 @@ function ArtistTimelineCard({
   artist,
   ownerIds,
   compareContext,
+  membersById,
+  selectionsByArtist,
+  myMemberId,
+  myJoinedSidequestsToday,
 }: {
   artist: Artist;
   ownerIds: Array<Id<"members">>;
   compareContext: CompareContext | null;
+  membersById: Map<string, Member>;
+  selectionsByArtist: Map<string, Array<Id<"members">>>;
+  myMemberId: Id<"members">;
+  myJoinedSidequestsToday: Sidequest[];
 }) {
   const palette = getStagePalette(artist.stage);
+  const toggle = useMutation(api.memberSelections.toggle);
+  const offline = useIsOffline();
+  const [busy, setBusy] = useState(false);
+
+  // The session user can only remove a pick they actually own. In
+  // compare mode the card may be visible because a friend picked it
+  // (ownerIds = [friend]); in that case the popover stays read-only.
+  const youOwn = ownerIds.includes(myMemberId);
+
+  const pickedIds = selectionsByArtist.get(artist._id) ?? [];
+  const allAttendees = pickedIds
+    .map((id) => {
+      const m = membersById.get(id);
+      if (!m) return null;
+      return { id, member: m, isYou: id === myMemberId };
+    })
+    .filter(
+      (
+        x,
+      ): x is {
+        id: Id<"members">;
+        member: Member;
+        isYou: boolean;
+      } => x !== null,
+    );
+
+  // Joined sidequests whose interval intersects this set's time.
+  // Same half-open check used elsewhere so a quest ending exactly
+  // when the set starts isn't surfaced as a conflict.
+  const overlappingSidequests = myJoinedSidequestsToday.filter(
+    (sq) => sq.startMs < artist.endMs && sq.endMs > artist.startMs,
+  );
+
+  async function handleRemove() {
+    if (busy || offline || !youOwn) return;
+    setBusy(true);
+    try {
+      // `toggle` is a single mutation that removes the selection if
+      // it exists; safer than a dedicated remove because we can't
+      // race with a concurrent re-pick on the same client.
+      await toggle({ memberId: myMemberId, artistId: artist._id });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <div
-      className="flex h-full w-full flex-col gap-0.5 overflow-hidden rounded-md border-l-[3px] px-2 py-1.5 text-left text-[11px]"
-      style={{
-        backgroundColor: `rgb(${palette.rgb} / 0.18)`,
-        borderColor: `rgb(${palette.rgb})`,
-        color: "rgb(229 231 235)",
-      }}
-    >
-      <div className="flex items-baseline justify-between gap-1.5">
-        <span className="truncate text-xs font-semibold leading-tight">
-          {artist.name}
-        </span>
-        <OwnerBadges ownerIds={ownerIds} compareContext={compareContext} />
-      </div>
-      <span
-        className="inline-flex w-fit items-center gap-1 truncate text-[10px] font-medium"
-        style={{ color: `rgb(${palette.rgb})` }}
-      >
-        <span
-          className="size-1.5 shrink-0 rounded-full"
-          style={{ backgroundColor: `rgb(${palette.rgb})` }}
-        />
-        <span className="truncate">{artist.stage}</span>
-      </span>
-      <span className="mt-auto text-[10px] tabular-nums text-muted-foreground">
-        {formatTime(artist.startMs)} – {formatTime(artist.endMs)}
-      </span>
-    </div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex h-full w-full flex-col gap-0.5 overflow-hidden rounded-md border-l-[3px] px-2 py-1.5 text-left text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          style={{
+            backgroundColor: `rgb(${palette.rgb} / 0.18)`,
+            borderColor: `rgb(${palette.rgb})`,
+            color: "rgb(229 231 235)",
+          }}
+          aria-label={`${artist.name} on ${artist.stage} — view details`}
+        >
+          <div className="flex items-baseline justify-between gap-1.5">
+            <span className="truncate text-xs font-semibold leading-tight">
+              {artist.name}
+            </span>
+            <OwnerBadges ownerIds={ownerIds} compareContext={compareContext} />
+          </div>
+          <span
+            className="inline-flex w-fit items-center gap-1 truncate text-[10px] font-medium"
+            style={{ color: `rgb(${palette.rgb})` }}
+          >
+            <span
+              className="size-1.5 shrink-0 rounded-full"
+              style={{ backgroundColor: `rgb(${palette.rgb})` }}
+            />
+            <span className="truncate">{artist.stage}</span>
+          </span>
+          <span className="mt-auto text-[10px] tabular-nums text-muted-foreground">
+            {formatTime(artist.startMs)} – {formatTime(artist.endMs)}
+          </span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 space-y-3 p-3">
+        <div className="space-y-1.5">
+          <div
+            className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+            style={{
+              backgroundColor: `rgb(${palette.rgb} / 0.25)`,
+              color: `rgb(${palette.rgb})`,
+            }}
+          >
+            <span
+              className="size-1.5 rounded-full"
+              style={{ backgroundColor: `rgb(${palette.rgb})` }}
+            />
+            {artist.stage}
+          </div>
+          <h3 className="text-sm font-semibold leading-tight">{artist.name}</h3>
+          <div className="flex items-center gap-1 text-[11px] tabular-nums text-muted-foreground">
+            <Clock className="size-3" />
+            {formatTime(artist.startMs)} – {formatTime(artist.endMs)}
+          </div>
+        </div>
+
+        {overlappingSidequests.length > 0 && (
+          <div className="flex flex-col gap-0.5 rounded-md bg-amber-500/15 px-2 py-1.5 text-[11px] font-medium text-amber-200 ring-1 ring-amber-500/40">
+            <span className="flex items-center gap-1 text-[9px] uppercase tracking-wide opacity-80">
+              <AlertTriangle className="size-3 shrink-0" />
+              Sidequest at this time
+            </span>
+            <span className="flex w-full min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
+              <span className="truncate font-semibold text-violet-200">
+                {overlappingSidequests[0].title}
+              </span>
+              <span className="shrink-0 whitespace-nowrap tabular-nums opacity-80">
+                {formatTime(overlappingSidequests[0].startMs)}–
+                {formatTime(overlappingSidequests[0].endMs)}
+              </span>
+              {overlappingSidequests.length > 1 && (
+                <span className="shrink-0 rounded-full bg-amber-500/30 px-1 text-[9px] font-semibold text-amber-100 ring-1 ring-amber-500/50">
+                  +{overlappingSidequests.length - 1}
+                </span>
+              )}
+            </span>
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            {allAttendees.length === 0 ? "No picks yet" : "Going"}
+          </div>
+          {allAttendees.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1">
+              {allAttendees.map(({ id, member, isYou }) => (
+                <MemberChip
+                  key={id}
+                  name={member.name}
+                  color={member.color}
+                  size="xs"
+                  isYou={isYou}
+                  truncate
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {youOwn && (
+          <button
+            type="button"
+            onClick={() => void handleRemove()}
+            disabled={busy || offline}
+            title={
+              offline
+                ? "Offline — reconnect to remove"
+                : "Remove this pick from your day"
+            }
+            className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-destructive/50 bg-destructive/10 text-xs font-medium text-destructive-foreground transition-colors hover:bg-destructive/20 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {busy ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="size-3.5" />
+            )}
+            Remove pick
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
 
