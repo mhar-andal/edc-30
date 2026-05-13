@@ -314,7 +314,21 @@ export default function Schedule() {
         >
           <TabsList className="grid h-10 w-full grid-cols-3">
             {DAYS.map((d) => (
-              <TabsTrigger key={d} value={d} className="w-full">
+              <TabsTrigger
+                key={d}
+                value={d}
+                className={cn(
+                  "w-full",
+                  // In My Day view we paint the active day with the
+                  // primary brand color so the personal context (your
+                  // schedule for *this* day) reads at a glance and
+                  // contrasts harder with the inactive days. The
+                  // Schedule (all-stages) view keeps the neutral
+                  // default since that's a browse-everyone surface.
+                  view === "myday" &&
+                    "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20",
+                )}
+              >
                 <span className="hidden sm:inline">{DAY_LABELS[d].full}</span>
                 <span className="sm:hidden">
                   {DAY_LABELS[d].short} {DAY_LABELS[d].date}
@@ -359,18 +373,19 @@ export default function Schedule() {
               </span>
             </button>
           )}
-          {myMemberId && (
-            <button
-              type="button"
-              onClick={reopenWalkthrough}
-              className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-border/60 bg-card/40 px-3 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-card/60 hover:text-foreground"
-              title="Open the artist quick-pick walkthrough"
-            >
-              <Sparkles className="size-3" />
-              Quick-pick walkthrough
-            </button>
-          )}
         </div>
+
+        {myMemberId && (
+          <button
+            type="button"
+            onClick={reopenWalkthrough}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/20 ring-1 ring-primary/40 transition-all hover:bg-primary/90 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            title="Open the artist quick-pick walkthrough"
+          >
+            <Sparkles className="size-4" />
+            Quick-pick walkthrough
+          </button>
+        )}
 
         {tourResumable && (
           <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
