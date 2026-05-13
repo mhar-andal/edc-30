@@ -19,17 +19,21 @@ import { useCachedQuery } from "@/lib/useCachedQuery";
 import { useIsOffline } from "@/lib/useIsOffline";
 import { getStagePalette } from "@/lib/colors";
 import { indexSpotsByLabel, spotLabelKey } from "@/lib/spots";
-import {
-  applyTimeToAnchor,
-  clampMs,
-  formatTime,
-  msToTimeInput,
-  type DayKey,
-} from "@/lib/time";
+import { formatTime, type DayKey } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 const SLOT_MS = 15 * 60 * 1000;
 const DEFAULT_MEET_DURATION_MS = 15 * 60 * 1000;
+/**
+ * How far back (before the convergence window starts) the gather
+ * dropdown is allowed to go, and how far past the end the leave
+ * dropdown is allowed to extend. The chip rows stay anchored to
+ * the window itself, but the dropdowns are "flex" pickers —
+ * useful when people want to gather a bit early or hang at the
+ * spot a bit longer than the destination set's nominal start.
+ */
+const GATHER_LEAD_MS = 60 * 60 * 1000;
+const LEAVE_TRAIL_MS = 60 * 60 * 1000;
 /**
  * Minute offsets surfaced as "leave time" chips (relative to the
  * gather time). Anchoring on duration rather than absolute clock time
@@ -188,11 +192,20 @@ export function MeetupSpotPicker({
       setTimeOpen(false);
       return;
     }
-    const start = Math.min(Math.max(draftStartMs, windowStart), windowEnd);
+    // Allow up to GATHER_LEAD_MS before the convergence window
+    // (early gather) and up to LEAVE_TRAIL_MS after (linger at the
+    // spot). Leave time still has to be ≥ start.
+    const start = Math.min(
+      Math.max(draftStartMs, windowStart - GATHER_LEAD_MS),
+      windowEnd + LEAVE_TRAIL_MS,
+    );
     const end =
       draftEndMs === null
         ? undefined
-        : Math.min(Math.max(draftEndMs, start), windowEnd);
+        : Math.min(
+            Math.max(draftEndMs, start),
+            windowEnd + LEAVE_TRAIL_MS,
+          );
     setTimeBusy(true);
     setTimeOpen(false);
     try {
@@ -607,7 +620,7 @@ function MeetTimeDialog({
           <CustomTimeRow
             label="Custom gather"
             valueMs={draftStartMs}
-            min={windowStart}
+            min={windowStart - GATHER_LEAD_MS}
             max={windowEnd}
             onChange={(nextMs) => {
               setDraftStartMs(nextMs);
@@ -653,7 +666,11 @@ function MeetTimeDialog({
                 label="Custom leave"
                 valueMs={draftEndMs}
                 min={draftStartMs}
-                max={windowEnd}
+                // Allow lingering up to LEAVE_TRAIL_MS past the
+                // convergence window's nominal end, so groups can
+                // hang out at the spot a bit longer than the buffer
+                // suggests.
+                max={windowEnd + LEAVE_TRAIL_MS}
                 allowClear
                 onChange={setDraftEndMs}
               />
@@ -683,13 +700,21 @@ function MeetTimeDialog({
   );
 }
 
+const FIVE_MIN_MS = 5 * 60 * 1000;
+
 /**
- * Inline labeled `<input type="time">` for typing a specific minute
- * inside the meetup window. The displayed value mirrors `valueMs` so
- * presets/chips and this input stay in sync — typing here is just an
- * alternate way to set the same draft state. The chosen time is
- * always clamped to `[min, max]` so the user can't escape the
- * convergence window.
+ * Native `<select>` listing every 5-minute slot inside the meetup
+ * window. We deliberately do NOT use `<input type="time">` here:
+ * iOS Safari treats `min > max` as "no valid time" for any window
+ * that crosses midnight (extremely common for late-night
+ * convergences), which makes the picker silently refuse typed
+ * values. A native select side-steps that entirely — it's also a
+ * familiar wheel UI on iOS, so picking a precise time is one tap +
+ * one scroll instead of fighting an invalid clock face.
+ *
+ * The current `valueMs` is preserved as an option even when it
+ * isn't a 5-min boundary, so legacy data (or a value coming from a
+ * chip with a non-5-min offset) doesn't get visually clobbered.
  */
 function CustomTimeRow({
   label,
@@ -706,44 +731,66 @@ function CustomTimeRow({
   onChange: (nextMs: number | null) => void;
   allowClear?: boolean;
 }) {
-  // Render the input as a controlled element using HH:MM in PDT.
-  // `applyTimeToAnchor` figures out which calendar day the value
-  // belongs to from the lower bound of the window, which matters for
-  // late-night convergences that cross midnight.
-  //
-  // We deliberately do NOT set HTML `min`/`max` attributes on the
-  // input. Late-night convergences yield ranges like 23:00 → 00:30,
-  // and HH:MM strings can't represent "wraps midnight" — iOS Safari
-  // sees `min > max` and refuses to commit any typed value, which
-  // looked like "the time picker doesn't work" on iPhones. We clamp
-  // the result in `onChange` instead, which handles cross-midnight
-  // correctly via `applyTimeToAnchor`.
-  const displayValue = valueMs !== null ? msToTimeInput(valueMs) : "";
+  const options = useMemo(() => {
+    if (max <= min) return [min];
+    const start = Math.ceil(min / FIVE_MIN_MS) * FIVE_MIN_MS;
+    const end = Math.floor(max / FIVE_MIN_MS) * FIVE_MIN_MS;
+    const out: number[] = [];
+    for (let t = start; t <= end; t += FIVE_MIN_MS) {
+      if (t >= min && t <= max) out.push(t);
+    }
+    if (out.length === 0) out.push(min);
+    // Surface the bounds explicitly even if they aren't 5-min
+    // multiples, so the user can still pick exactly the window
+    // edge.
+    if (out[0] !== min) out.unshift(min);
+    if (out[out.length - 1] !== max) out.push(max);
+    return out;
+  }, [min, max]);
+
+  const selectValue = valueMs !== null ? String(valueMs) : "";
+  const valueIsKnown =
+    valueMs !== null && options.some((ms) => ms === valueMs);
+
   return (
     <div className="flex items-center gap-2 pt-1">
       <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
-      <input
-        type="time"
-        value={displayValue}
-        step={60}
+      <select
+        value={selectValue}
         onChange={(e) => {
           const raw = e.target.value;
           if (!raw) {
             if (allowClear) onChange(null);
             return;
           }
-          const candidate = applyTimeToAnchor(raw, min);
-          onChange(clampMs(candidate, min, max));
+          const next = Number.parseInt(raw, 10);
+          if (Number.isFinite(next)) onChange(next);
         }}
         className={cn(
           "h-7 rounded-md border border-border/60 bg-background/40 px-2 text-[12px] tabular-nums text-foreground",
           "focus:outline-none focus:ring-1 focus:ring-emerald-500/50",
-          "[&::-webkit-calendar-picker-indicator]:opacity-60",
         )}
         aria-label={label}
-      />
+      >
+        {allowClear && <option value="">— Pick —</option>}
+        {!allowClear && valueMs === null && (
+          <option value="" disabled>
+            — Pick —
+          </option>
+        )}
+        {/* Preserve a non-5-min legacy / chip value so it shows up
+            as the current selection without being silently dropped. */}
+        {valueMs !== null && !valueIsKnown && (
+          <option value={String(valueMs)}>{formatTime(valueMs)}</option>
+        )}
+        {options.map((ms) => (
+          <option key={ms} value={String(ms)}>
+            {formatTime(ms)}
+          </option>
+        ))}
+      </select>
       {allowClear && valueMs !== null && (
         <button
           type="button"
