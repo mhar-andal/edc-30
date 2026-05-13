@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
 import {
+  AtSign,
+  Bell,
   CalendarClock,
   ChevronLeft,
   Clock,
+  GitCompare,
+  ListOrdered,
   MapPin,
   Plus,
   Sparkles,
@@ -46,33 +50,43 @@ interface Step {
 const STEPS: Step[] = [
   {
     title: "Coordinate your EDC weekend",
-    body: "Pick the sets you want to see, plan side activities with friends, and find natural meetup moments along the way.",
+    body: "Pick the sets you want to see, plan meetups + sidequests with friends, and watch your day come together on a single timeline.",
     visual: <HeroVisual />,
   },
   {
-    title: "Plan it in minutes with Quick pick",
-    body: "Tell us when you'll arrive each day, then we walk you through ~30-minute windows. Pick anyone you'd catch in that block — pick two if you want to do half-and-half. Exit any time and pick up where you left off.",
+    title: "Plan it fast with Quick pick",
+    body: "Tell us when you want to start picking each day, and we'll walk you through ~30-minute windows. Pick anyone you'd catch in that block — or copy a friend's whole day in one tap.",
     visual: <QuickPickVisual />,
   },
   {
     title: "Pick sets — see who's going",
-    body: "Tap a set to add it to your picks. Friends' picks appear color-coded next to yours on every set, so you can see who's heading where.",
+    body: "Tap any set to add it. Friends' picks appear color-coded next to yours so you can see who's heading where. Browse by stage, or flip to By time for a chronological cross-stage view.",
     visual: <PeopleVisual />,
   },
   {
-    title: "Spot overlapping sets",
-    body: "If a set you're eyeing collides with one you've already picked, we'll flag it. You can still pick both — handy if you want to leave one early.",
+    title: "Heads-up on overlaps",
+    body: "If a set you're eyeing collides with one you've already picked or a sidequest you've joined, we flag it on the card. You can still pick both — handy if you want to leave one early.",
     visual: <OverlapVisual />,
   },
   {
     title: "Your day on a single timeline",
-    body: "Switch to My Day to see your picks, joined meetups, and any sidequests (food runs, art cars, rest breaks) laid out as a single column timeline.",
+    body: "My Day is the default view — your picks, joined meetups, and sidequests laid out chronologically. Tap any item for details, or compare your day side-by-side with a friend's.",
     visual: <MyDayVisual />,
   },
   {
-    title: "Find meetup moments",
-    body: "When friends split between stages but converge on the same set next, we surface a meetup window on Coordinate. Pick a spot and a gather → leave time so everyone knows when to roll.",
+    title: "Find natural meetup moments",
+    body: "When friends split between stages but converge on the same next set, we surface a meetup window. Pick a spot and a gather → leave time so everyone knows when to roll.",
     visual: <MeetupVisual />,
+  },
+  {
+    title: "Drop pins on the festival map",
+    body: "Save reusable meet spots like \"Electric Avenue sign\" or \"Cosmic Meadow rail\" with a colored pin. Tap any spot in the app to open the festival map and see exactly where it is.",
+    visual: <MapVisual />,
+  },
+  {
+    title: "Sidequests + chat",
+    body: "Plan food runs, art-car hunts, or rest breaks as sidequests with their own meet spot. Comment on any meetup or sidequest, @mention friends, and they get a notification in the bell.",
+    visual: <CommentsVisual />,
   },
 ];
 
@@ -249,6 +263,11 @@ function QuickPickVisual() {
             />
             <MockArtistCard stage="Basspod" name="Levity" status="add" />
           </div>
+          <div className="flex items-center gap-1.5 pt-1">
+            <span className="inline-flex h-4 items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 text-[9px] font-medium text-emerald-200 ring-1 ring-emerald-500/40">
+              Copy Friday from Alex
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -258,9 +277,15 @@ function QuickPickVisual() {
 function MyDayVisual() {
   return (
     <div className="flex w-full max-w-[260px] flex-col gap-1.5 px-4">
-      <div className="mb-0.5 inline-flex w-fit items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
-        <CalendarClock className="size-2.5" />
-        My Day · Friday
+      <div className="mb-0.5 flex items-center gap-1.5">
+        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+          <CalendarClock className="size-2.5" />
+          My Day · Friday
+        </span>
+        <span className="inline-flex w-fit items-center gap-1 rounded-full bg-card/80 px-2 py-0.5 text-[9px] font-medium text-muted-foreground ring-1 ring-border/60">
+          <GitCompare className="size-2.5" />
+          Compare
+        </span>
       </div>
       <MyDayRow
         time="9pm"
@@ -472,6 +497,145 @@ function MockChip({ name, color }: { name: string; color: string }) {
         className="size-1.5 rounded-full"
         style={{ backgroundColor: color }}
       />
+      {name}
+    </span>
+  );
+}
+
+function MapVisual() {
+  return (
+    <div className="w-full max-w-[260px] px-4">
+      <div className="overflow-hidden rounded-xl border border-border/60 bg-card/80 p-2 shadow-sm">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+            <MapPin className="size-2.5" />
+            Festival map
+          </span>
+          <span className="text-[9px] tabular-nums text-muted-foreground">
+            Friday
+          </span>
+        </div>
+        <div className="relative h-24 overflow-hidden rounded-md bg-gradient-to-br from-emerald-900/40 via-sky-900/40 to-rose-900/40">
+          <div className="absolute inset-0 opacity-40 [background-image:linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:14px_14px]" />
+          <MockPin x="22%" y="40%" color="rgb(244 63 94)" />
+          <MockPin x="55%" y="22%" color="rgb(132 204 22)" highlight />
+          <MockPin x="74%" y="64%" color="rgb(56 189 248)" />
+          <MockPin x="38%" y="74%" color="rgb(168 85 247)" />
+        </div>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-medium text-emerald-200 ring-1 ring-emerald-500/40">
+            <MapPin className="size-2.5" />
+            Electric Avenue Sign
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-md bg-card/60 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground ring-1 ring-border/60">
+            <MapPin className="size-2.5" />
+            Cosmic Meadow rail
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MockPin({
+  x,
+  y,
+  color,
+  highlight,
+}: {
+  x: string;
+  y: string;
+  color: string;
+  highlight?: boolean;
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "absolute -translate-x-1/2 -translate-y-full",
+        highlight && "drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]",
+      )}
+      style={{ left: x, top: y }}
+    >
+      <span
+        className="block size-2.5 rounded-full ring-2 ring-background"
+        style={{ backgroundColor: color }}
+      />
+    </span>
+  );
+}
+
+function CommentsVisual() {
+  return (
+    <div className="w-full max-w-[260px] px-4">
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-medium text-violet-200 ring-1 ring-violet-500/40">
+            <ListOrdered className="size-2.5" />
+            Sidequest · Sushi pop-up
+          </span>
+          <span className="relative inline-flex">
+            <Bell className="size-3.5 text-muted-foreground" />
+            <span className="absolute -right-1 -top-1 grid size-3 place-items-center rounded-full bg-primary text-[7px] font-bold text-primary-foreground">
+              2
+            </span>
+          </span>
+        </div>
+        <MockComment
+          name="Alex"
+          color="#fb7185"
+          body={
+            <>
+              gathering at <span className="font-medium">Electric Ave</span>{" "}
+              after Hardwell?
+            </>
+          }
+        />
+        <MockComment
+          name="Sam"
+          color="#22d3ee"
+          body={
+            <>
+              <AtSignChip name="Riley" color="#a3e635" /> in?
+            </>
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+function MockComment({
+  name,
+  color,
+  body,
+}: {
+  name: string;
+  color: string;
+  body: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-md border border-border/60 bg-card/60 p-1.5">
+      <div className="mb-0.5 flex items-center gap-1">
+        <span
+          className="size-1.5 rounded-full"
+          style={{ backgroundColor: color }}
+        />
+        <span className="text-[9px] font-semibold">{name}</span>
+        <span className="text-[8px] text-muted-foreground">· 2m</span>
+      </div>
+      <div className="text-[10px] leading-snug text-foreground/80">{body}</div>
+    </div>
+  );
+}
+
+function AtSignChip({ name, color }: { name: string; color: string }) {
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 rounded bg-primary/15 px-1 py-0 align-baseline text-[9px] font-medium text-primary"
+      style={{ color }}
+    >
+      <AtSign className="size-2" />
       {name}
     </span>
   );
