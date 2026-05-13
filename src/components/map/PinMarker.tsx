@@ -27,7 +27,7 @@ interface Props {
  */
 export function PinMarker({
   color,
-  size = 32,
+  size = 16,
   highlight = false,
   className,
   style,
@@ -40,12 +40,18 @@ export function PinMarker({
     <div
       role="img"
       aria-label={ariaLabel}
-      className={cn(
-        "pointer-events-none relative",
-        highlight && "animate-pulse",
-        className,
-      )}
-      style={{ width: w, height: h, ...style }}
+      className={cn("pointer-events-none relative", className)}
+      style={{
+        width: w,
+        height: h,
+        // Custom blink (defined in `src/index.css`) — has a longer
+        // fully-hidden segment than `animate-pulse` so the user can
+        // peek at whatever's on the map beneath the highlighted pin.
+        animation: highlight
+          ? "pin-blink 2.2s ease-in-out infinite"
+          : undefined,
+        ...style,
+      }}
     >
       <svg
         viewBox="0 0 32 41"

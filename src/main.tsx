@@ -5,6 +5,7 @@ import { ConvexProvider, ConvexReactClient } from "convex/react";
 import "./index.css";
 import App from "./App";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { UpdateAvailableBanner } from "@/components/UpdateAvailableBanner";
 import { registerServiceWorker } from "./pwa/register-sw";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
@@ -15,6 +16,7 @@ createRoot(document.getElementById("root")!).render(
       <ConvexProvider client={convex}>
         <BrowserRouter>
           <App />
+          <UpdateAvailableBanner />
         </BrowserRouter>
       </ConvexProvider>
     </ErrorBoundary>

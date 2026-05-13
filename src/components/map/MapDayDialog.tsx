@@ -31,10 +31,14 @@ interface Props {
 
 interface UseEntry {
   kind: "convergence" | "sidequest";
-  /** Headline label rendered on the right side of the legend row. */
-  primary: string;
-  /** Smaller secondary line (stage / time window). */
+  /** Time summary (`9:30pm – 10:00pm`, or sidequest range). */
   secondary: string;
+  /**
+   * Convergence-only destination context: which artist + stage the
+   * group is heading to. Rendered as a sub-line so it never crowds
+   * the time on narrow screens.
+   */
+  destination?: { artist?: string; stage: string };
 }
 
 interface PinEntry {
@@ -68,6 +72,7 @@ export function MapDayDialog({
   const meetups = useCachedQuery(api.meetups.listForDay, { day });
   const sidequests = useCachedQuery(api.sidequests.listForDay, { day });
   const spots = useCachedQuery(api.spots.list);
+  const artists = useCachedQuery(api.artists.listAll);
   const [highlightId, setHighlightId] = useState<string | null>(null);
 
   // Normalize the focus label once so we can both filter entries and
@@ -113,14 +118,16 @@ export function MapDayDialog({
     for (const m of meetups ?? []) {
       record(m.label, {
         kind: "convergence",
-        primary: m.label?.trim() || `Meetup → ${m.destinationStage}`,
         secondary: convergenceSecondary(m),
+        destination: {
+          artist: resolveDestinationArtist(m, artists ?? [])?.name,
+          stage: m.destinationStage,
+        },
       });
     }
     for (const s of sidequests ?? []) {
       record(s.location, {
         kind: "sidequest",
-        primary: s.title,
         secondary: formatRange(s.startMs, s.endMs),
       });
     }
@@ -138,18 +145,32 @@ export function MapDayDialog({
     return Array.from(buckets.values()).sort((a, b) =>
       a.spot.label.localeCompare(b.spot.label),
     );
-  }, [meetups, sidequests, spots, focusKey]);
+  }, [meetups, sidequests, spots, artists, focusKey]);
 
-  const mapPins: MapPinShape[] = entries.map((e) => ({
-    id: e.spot._id,
-    x: e.spot.mapX,
-    y: e.spot.mapY,
-    color: e.spot.pinColor,
-    label: e.spot.label,
-    highlight: highlightId === e.spot._id,
-    onClick: () =>
-      setHighlightId((cur) => (cur === e.spot._id ? null : e.spot._id)),
-  }));
+  // Only the highlighted pin is rendered on the map. This keeps the
+  // map clean while the user scans the legend, and means the legend
+  // doubles as a "ping this spot" picker. In focus mode the pin is
+  // pre-highlighted on open so the user lands on the map already
+  // pointing at the spot they tapped from Schedule / Coordinate.
+  const mapPins: MapPinShape[] = entries
+    .filter((e) => highlightId === e.spot._id)
+    .map((e) => ({
+      id: e.spot._id,
+      x: e.spot.mapX,
+      y: e.spot.mapY,
+      color: e.spot.pinColor,
+      label: e.spot.label,
+      highlight: true,
+      // In focus mode there's no legend to re-summon the pin, so
+      // tapping it is a no-op. In normal mode tapping toggles the
+      // highlight off (same as tapping the matching legend row).
+      onClick: isFocused
+        ? undefined
+        : () =>
+            setHighlightId((cur) =>
+              cur === e.spot._id ? null : e.spot._id,
+            ),
+    }));
 
   return (
     <Dialog
@@ -180,6 +201,12 @@ export function MapDayDialog({
           <MapView pins={mapPins} />
         </div>
 
+        {entries.length > 0 && !isFocused && !highlightId && (
+          <p className="text-center text-[11px] text-muted-foreground">
+            Tap a spot below to show it on the map.
+          </p>
+        )}
+
         {entries.length > 0 && !isFocused && (
           <ul className="max-h-48 space-y-1 overflow-y-auto pr-1">
             {entries.map((e) => {
@@ -209,16 +236,31 @@ export function MapDayDialog({
                       <div className="truncate font-medium text-foreground">
                         {e.spot.label}
                       </div>
-                      <ul className="mt-0.5 space-y-0.5 text-[10px] text-muted-foreground">
+                      <ul className="mt-0.5 space-y-1 text-[10px] text-muted-foreground">
                         {e.uses.map((u, i) => (
-                          <li key={i} className="truncate">
-                            {u.kind === "convergence"
-                              ? "Meetup · "
-                              : "Sidequest · "}
-                            <span className="text-foreground/80">
-                              {u.primary}
-                            </span>
-                            <span> · {u.secondary}</span>
+                          <li key={i} className="min-w-0">
+                            <div className="flex flex-wrap items-baseline gap-x-1.5">
+                              <span>
+                                {u.kind === "convergence"
+                                  ? "Meetup"
+                                  : "Sidequest"}
+                              </span>
+                              <span className="tabular-nums text-foreground/80">
+                                {u.secondary}
+                              </span>
+                            </div>
+                            {u.destination && (
+                              <div className="truncate text-[10px] text-muted-foreground/90">
+                                →{" "}
+                                {u.destination.artist ? (
+                                  <span className="text-foreground/80">
+                                    {u.destination.artist}
+                                  </span>
+                                ) : null}
+                                {u.destination.artist ? " · " : ""}
+                                <span>{u.destination.stage}</span>
+                              </div>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -246,12 +288,40 @@ export function MapDayDialog({
 }
 
 function convergenceSecondary(m: Doc<"meetups">): string {
-  const dest = m.destinationStage;
+  // Times only — the destination artist + stage are surfaced on a
+  // sub-line, so we keep this row short enough that the time isn't
+  // truncated on narrow screens.
   if (m.meetMs !== undefined) {
     if (m.meetEndMs !== undefined && m.meetEndMs > m.meetMs) {
-      return `${dest} · ${formatTime(m.meetMs)} – ${formatTime(m.meetEndMs)}`;
+      return `${formatTime(m.meetMs)} – ${formatTime(m.meetEndMs)}`;
     }
-    return `${dest} · gather ${formatTime(m.meetMs)}`;
+    return `gather ${formatTime(m.meetMs)}`;
   }
-  return `${dest} · ${formatRange(m.windowStartMs, m.windowEndMs)}`;
+  return formatRange(m.windowStartMs, m.windowEndMs);
+}
+
+/**
+ * Resolve which artist a convergence is heading to. The meetup row
+ * only stores `destinationStage`; the artist is whichever set on
+ * that stage overlaps with the convergence buffer window. We pick
+ * the set with the largest overlap to be safe against
+ * back-to-back sets sharing a window edge.
+ */
+function resolveDestinationArtist(
+  m: Doc<"meetups">,
+  artists: Doc<"artists">[],
+): Doc<"artists"> | null {
+  let best: { artist: Doc<"artists">; overlap: number } | null = null;
+  const stage = m.destinationStage;
+  for (const a of artists) {
+    if (a.day !== m.day) continue;
+    if (a.stage !== stage) continue;
+    const overlap =
+      Math.min(a.endMs, m.windowEndMs) - Math.max(a.startMs, m.windowStartMs);
+    if (overlap <= 0) continue;
+    if (!best || overlap > best.overlap) {
+      best = { artist: a, overlap };
+    }
+  }
+  return best?.artist ?? null;
 }

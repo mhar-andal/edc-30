@@ -106,6 +106,28 @@
   --color-stage-bionic: oklch(0.78 0.18 195);
 }
 
+/*
+ * Map-pin attention animation. Used for highlighted pins on the
+ * festival map. Unlike Tailwind's `animate-pulse` (which only dips
+ * to ~50% opacity), this fully hides the pin for a noticeable
+ * portion of each cycle so the user can read what's on the map
+ * beneath / around it. Cycle: visible → fade out → hidden → fade
+ * in, with the hidden segment being roughly a third of the loop.
+ */
+@keyframes pin-blink {
+  0%,
+  30% {
+    opacity: 1;
+  }
+  45%,
+  80% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 /* Scrollbar polish in dark mode */
 ::-webkit-scrollbar {
   width: 10px;
