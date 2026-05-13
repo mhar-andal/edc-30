@@ -104,7 +104,11 @@ function loadInitialLayout(): ScheduleLayout {
   } catch {
     /* no-op */
   }
-  return "byStage";
+  // Default to chronological — when someone opens the lineup they're
+  // usually asking "who's playing right now / next?" not "what does
+  // Cosmic Meadow look like all night?". The per-stage layout is one
+  // tap away.
+  return "byTime";
 }
 
 /**
@@ -521,8 +525,8 @@ export default function Schedule() {
           >
             {(
               [
-                { value: "byStage", label: "By stage", icon: LayoutGrid },
                 { value: "byTime", label: "By time", icon: LayoutList },
+                { value: "byStage", label: "By stage", icon: LayoutGrid },
               ] as const
             ).map(({ value, label, icon: Icon }) => {
               const active = scheduleLayout === value;

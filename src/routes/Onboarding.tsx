@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useMutation } from "convex/react";
-import { CloudOff, HelpCircle, Loader2, Sparkles, Users } from "lucide-react";
+import {
+  CloudOff,
+  HelpCircle,
+  Info,
+  Loader2,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -203,8 +210,13 @@ export default function Onboarding() {
         {(members?.length ?? 0) > 0 && (
           <div className="rounded-xl border border-border/60 bg-card/60 p-4">
             <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <Users className="size-3.5" /> Already here ({members?.length}) ·
-              tap to sign in
+              <Users className="size-3.5" /> Already here ({members?.length})
+            </div>
+            <div className="mb-3 flex items-start gap-2 rounded-md bg-primary/10 px-2.5 py-1.5 text-[11px] text-primary ring-1 ring-primary/20">
+              <Info className="mt-px size-3.5 shrink-0" />
+              <span>
+                Coming back? Tap your name below to sign in as that person.
+              </span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {(members ?? []).slice(0, 30).map((m) => (

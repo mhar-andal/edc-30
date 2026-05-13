@@ -22,7 +22,15 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "autoUpdate",
+      // Manual prompt instead of auto-takeover. With `autoUpdate` a
+      // new SW would `skipWaiting` + `clientsClaim` and start serving
+      // a different chunk manifest to a still-running v1 page,
+      // breaking lazy chunk loads (the dreaded "Failed to fetch
+      // dynamically imported module"). With `prompt` the new SW stays
+      // in waiting until our in-app "Update available" banner is
+      // tapped, which then calls the registered `updateSW(true)` to
+      // skipWaiting + reload in lockstep.
+      registerType: "prompt",
       includeAssets: [
         "favicon.svg",
         "apple-touch-icon.png",

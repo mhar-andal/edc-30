@@ -247,7 +247,7 @@ export function MapPicker({ open, onOpenChange, label, myMemberId }: Props) {
                 className="flex size-9 items-end justify-center"
                 aria-hidden
               >
-                <PinMarker color={draftColor} size={28} />
+                <PinMarker color={draftColor} size={16} />
               </div>
             </div>
           </div>
