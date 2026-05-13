@@ -169,11 +169,22 @@ export default function Coordinate() {
             same one next.
           </p>
         </div>
-        <Tabs value={day} onValueChange={(v) => setDay(v as DayKey)}>
-          <TabsList>
+        <Tabs
+          value={day}
+          onValueChange={(v) => setDay(v as DayKey)}
+          className="w-full"
+        >
+          <TabsList className="grid h-10 w-full grid-cols-3">
             {DAYS.map((d) => (
-              <TabsTrigger key={d} value={d}>
-                {DAY_LABELS[d].short} {DAY_LABELS[d].date}
+              <TabsTrigger
+                key={d}
+                value={d}
+                className="w-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20"
+              >
+                <span className="hidden sm:inline">{DAY_LABELS[d].full}</span>
+                <span className="sm:hidden">
+                  {DAY_LABELS[d].short} {DAY_LABELS[d].date}
+                </span>
               </TabsTrigger>
             ))}
           </TabsList>
