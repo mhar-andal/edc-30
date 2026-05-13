@@ -3,6 +3,7 @@ import { useMutation } from "convex/react";
 import {
   CalendarClock,
   LayoutGrid,
+  LayoutList,
   Loader2,
   Map as MapIcon,
   Plus,
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { DesktopGrid } from "@/components/schedule/DesktopGrid";
 import { MobileStageList } from "@/components/schedule/MobileStageList";
 import { MyDayTimeline } from "@/components/schedule/MyDayTimeline";
+import { StagesOverview } from "@/components/schedule/StagesOverview";
 import { FirstRunPicker } from "@/components/schedule/FirstRunPicker";
 import { SidequestList } from "@/components/sidequests/SidequestList";
 import {
@@ -48,6 +50,14 @@ import { cn } from "@/lib/utils";
 
 type MobileTab = "artists" | "sidequests";
 type ScheduleView = "schedule" | "myday";
+/**
+ * How to lay out the artists section inside the "Schedule" view.
+ * - `byStage` is the default Gantt-on-desktop / per-stage-dropdown-on-
+ *   mobile experience that's been there since launch.
+ * - `byTime` is a single chronological list across every stage,
+ *   bucketed under sticky hour headers (`StagesOverview`).
+ */
+type ScheduleLayout = "byStage" | "byTime";
 
 interface EditState {
   open: boolean;
@@ -59,6 +69,7 @@ interface EditState {
 const DEFAULT_DURATION_MS = 60 * 60 * 1000;
 const FIRST_RUN_STORAGE_PREFIX = "edc.first-run-picker.shown.v1";
 const VIEW_STORAGE_KEY = "edc.schedule-view.v1";
+const SCHEDULE_LAYOUT_STORAGE_KEY = "edc.schedule-layout.v1";
 /**
  * Per-festival-day flag tracking whether we already auto-opened
  * "My Day" for that calendar date. Stored as
@@ -79,7 +90,21 @@ function loadInitialView(): ScheduleView {
   } catch {
     /* no-op */
   }
-  return "schedule";
+  // First-run default: My Day. The personal-schedule view is the
+  // most-used surface once you've made picks, so we land users
+  // there by default and let the all-stages "Schedule" view be a
+  // deliberate switch when they want to browse the lineup.
+  return "myday";
+}
+
+function loadInitialLayout(): ScheduleLayout {
+  try {
+    const v = window.localStorage.getItem(SCHEDULE_LAYOUT_STORAGE_KEY);
+    if (v === "byStage" || v === "byTime") return v;
+  } catch {
+    /* no-op */
+  }
+  return "byStage";
 }
 
 /**
@@ -124,6 +149,9 @@ export default function Schedule() {
   const [search, setSearch] = useState("");
   const [mobileTab, setMobileTab] = useState<MobileTab>("artists");
   const [view, setView] = useState<ScheduleView>(initial.view);
+  const [scheduleLayout, setScheduleLayout] = useState<ScheduleLayout>(
+    () => loadInitialLayout(),
+  );
   const [editState, setEditState] = useState<EditState | null>(null);
   const [firstRunOpen, setFirstRunOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
@@ -142,6 +170,17 @@ export default function Schedule() {
       /* no-op */
     }
   }, [view]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        SCHEDULE_LAYOUT_STORAGE_KEY,
+        scheduleLayout,
+      );
+    } catch {
+      /* no-op */
+    }
+  }, [scheduleLayout]);
 
   // The tour stores its progress in localStorage. Whenever the dialog
   // opens or closes we re-check the resume flag so the banner reflects
@@ -473,17 +512,62 @@ export default function Schedule() {
           </p>
         )}
 
+        {view === "schedule" && mobileTab === "artists" && !search.trim() && (
+          <div
+            role="tablist"
+            aria-label="Artist layout"
+            className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-card/40 p-1 text-[11px] font-medium"
+          >
+            {(
+              [
+                { value: "byStage", label: "By stage", icon: LayoutGrid },
+                { value: "byTime", label: "By time", icon: LayoutList },
+              ] as const
+            ).map(({ value, label, icon: Icon }) => {
+              const active = scheduleLayout === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setScheduleLayout(value)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors",
+                    active
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <Icon className="size-3" />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {view === "schedule" && (
           <div className="md:hidden">
             {mobileTab === "artists" ? (
-              <MobileStageList
-                artists={dayArtists}
-                selectionsByArtist={data.selectionsByArtist}
-                membersById={data.membersById}
-                myMemberId={myMemberId}
-                myOverlapsByArtist={data.myOverlapsByArtist}
-                flatten={!!search.trim()}
-              />
+              scheduleLayout === "byTime" && !search.trim() ? (
+                <StagesOverview
+                  artists={dayArtists}
+                  selectionsByArtist={data.selectionsByArtist}
+                  membersById={data.membersById}
+                  myMemberId={myMemberId}
+                  myOverlapsByArtist={data.myOverlapsByArtist}
+                />
+              ) : (
+                <MobileStageList
+                  artists={dayArtists}
+                  selectionsByArtist={data.selectionsByArtist}
+                  membersById={data.membersById}
+                  myMemberId={myMemberId}
+                  myOverlapsByArtist={data.myOverlapsByArtist}
+                  flatten={!!search.trim()}
+                />
+              )
             ) : (
               <SidequestList
                 sidequests={daySidequests}
@@ -509,19 +593,30 @@ export default function Schedule() {
       </div>
 
       {/* Desktop calendar breaks out of max-w to use the full viewport. */}
-      {view === "schedule" && (
-        <div className="hidden md:block">
-          <DesktopGrid
-            day={day}
-            artists={dayArtists}
-            selectionsByArtist={data.selectionsByArtist}
-            membersById={data.membersById}
-            myMemberId={myMemberId}
-            myOverlapsByArtist={data.myOverlapsByArtist}
-            sidequests={daySidequests}
-          />
-        </div>
-      )}
+      {view === "schedule" &&
+        (scheduleLayout === "byTime" && !search.trim() ? (
+          <div className="mx-auto hidden w-full max-w-7xl md:block">
+            <StagesOverview
+              artists={dayArtists}
+              selectionsByArtist={data.selectionsByArtist}
+              membersById={data.membersById}
+              myMemberId={myMemberId}
+              myOverlapsByArtist={data.myOverlapsByArtist}
+            />
+          </div>
+        ) : (
+          <div className="hidden md:block">
+            <DesktopGrid
+              day={day}
+              artists={dayArtists}
+              selectionsByArtist={data.selectionsByArtist}
+              membersById={data.membersById}
+              myMemberId={myMemberId}
+              myOverlapsByArtist={data.myOverlapsByArtist}
+              sidequests={daySidequests}
+            />
+          </div>
+        ))}
 
       {view === "schedule" && mobileTab === "sidequests" && myMemberId && (
         <button
@@ -588,16 +683,16 @@ function ViewSwitcher({
     hint: string;
   }> = [
     {
-      value: "schedule",
-      label: "Schedule",
-      icon: LayoutGrid,
-      hint: "All stages & sidequests",
-    },
-    {
       value: "myday",
       label: "My Day",
       icon: CalendarClock,
       hint: "Your picks, meetups & sidequests",
+    },
+    {
+      value: "schedule",
+      label: "Schedule",
+      icon: LayoutGrid,
+      hint: "All stages & sidequests",
     },
   ];
   return (

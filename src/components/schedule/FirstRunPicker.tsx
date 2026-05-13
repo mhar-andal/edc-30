@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Check,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Clock,
   Copy,
@@ -33,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MemberChip } from "@/components/MemberChip";
+import { AttendeesStrip } from "./AttendeesStrip";
 import {
   SidequestDialog,
   type SidequestDraft,
@@ -136,7 +137,7 @@ export function FirstRunPicker({
   sidequestsByDay,
 }: Props) {
   const toggle = useMutation(api.memberSelections.toggle);
-  const addManyPicks = useMutation(api.memberSelections.addMany);
+  const replacePicksForDay = useMutation(api.memberSelections.replaceForDay);
   const clearPicksForDay = useMutation(api.memberSelections.clearForDay);
   const joinSidequest = useMutation(api.sidequests.join);
   const leaveSidequest = useMutation(api.sidequests.leave);
@@ -155,7 +156,8 @@ export function FirstRunPicker({
   const [copyToast, setCopyToast] = useState<{
     fromName: string;
     added: number;
-    skipped: number;
+    /** Picks of the user's that were wiped by the replace. */
+    replaced: number;
     nonce: number;
   } | null>(null);
   // Whether the outer "Copy day from a friend" section is open. We
@@ -499,9 +501,12 @@ export function FirstRunPicker({
   /**
    * Copies a friend's picks for the day the arrival phase is sitting
    * on, then jumps ahead to the next day's arrival (or completes the
-   * walkthrough if this was the last day). The user explicitly opted
-   * into this shortcut, so we skip the slot-by-slot review — they
-   * can always re-enter quick pick or tweak directly on the schedule.
+   * walkthrough if this was the last day). Replaces the user's
+   * existing picks for the day rather than merging — the mental
+   * model is "copy their schedule", not "add their picks to mine".
+   *
+   * If the user has any existing picks for the day we confirm before
+   * wiping so accidental clicks don't silently overwrite their work.
    */
   async function handleCopyFromMember(
     member: Member,
@@ -511,19 +516,33 @@ export function FirstRunPicker({
     if (copyBusyMemberId) return;
     if (phase.kind !== "arrival") return;
     if (artists.length === 0) return;
+    const day = DAYS[phase.dayIndex];
+    const dayLabelLocal = DAY_LABELS[day];
+    const existingCount = pickCountForDay(day);
+    if (existingCount > 0) {
+      const ok = window.confirm(
+        `Replace your ${existingCount} pick${
+          existingCount === 1 ? "" : "s"
+        } for ${dayLabelLocal.full} with ${member.name}'s ${
+          artists.length
+        } pick${artists.length === 1 ? "" : "s"}? This can't be undone.`,
+      );
+      if (!ok) return;
+    }
     setCopyBusyMemberId(member._id);
     try {
       const artistIds = artists.map((a) => a._id as Id<"artists">);
-      const result = await addManyPicks({
+      const result = await replacePicksForDay({
         memberId: myMemberId,
+        day,
         artistIds,
       });
       const added = result?.added ?? 0;
-      const skipped = artistIds.length - added;
+      const replaced = result?.removed ?? 0;
       setCopyToast({
         fromName: member.name,
         added,
-        skipped,
+        replaced,
         nonce: Date.now(),
       });
       const nextDayIdx = phase.dayIndex + 1;
@@ -608,6 +627,15 @@ export function FirstRunPicker({
           ref={dialogScrollRef}
           className="max-h-[90dvh] max-w-md gap-0 overflow-y-auto p-0"
         >
+          <NavBar
+            position="top"
+            onBack={backFromArrival}
+            backDisabled={phase.dayIndex === 0}
+            onContinue={commitArrival}
+            continueLabel="Continue"
+            continueDisabled={!arrivalDraft || isCopying}
+            onExit={onClose}
+          />
           <DialogHeader className="space-y-2 border-b border-border/40 px-5 pb-3 pt-5">
             <div className="flex items-center justify-between gap-2">
               <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-medium text-primary">
@@ -619,11 +647,11 @@ export function FirstRunPicker({
               </span>
             </div>
             <DialogTitle className="text-lg leading-tight">
-              When will you arrive on {dayLabel.full}?
+              Where do you want to start on {dayLabel.full}?
             </DialogTitle>
             <DialogDescription>
-              We&apos;ll start your picks from this time, including any sets
-              that&apos;ll already be in progress when you get there.
+              We&apos;ll walk you through the lineup from this time onward —
+              including any sets that&apos;ll already be in progress.
             </DialogDescription>
           </DialogHeader>
 
@@ -640,11 +668,12 @@ export function FirstRunPicker({
                     ? `Copied ${copyToast.added} pick${
                         copyToast.added === 1 ? "" : "s"
                       } from ${copyToast.fromName}`
-                    : `${copyToast.fromName}'s picks were already on your schedule`}
+                    : `${copyToast.fromName} has no picks for this day yet`}
                 </div>
-                {copyToast.skipped > 0 && copyToast.added > 0 && (
+                {copyToast.replaced > 0 && (
                   <div className="text-[11px] text-emerald-200/80">
-                    {copyToast.skipped} already on your schedule, skipped.
+                    Replaced your previous {copyToast.replaced} pick
+                    {copyToast.replaced === 1 ? "" : "s"} for this day.
                   </div>
                 )}
               </div>
@@ -662,7 +691,7 @@ export function FirstRunPicker({
           <div className="space-y-2 px-5 py-4">
             <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               <Clock className="size-3" />
-              Arrival time
+              Start picking from
             </span>
             <Select value={arrivalDraft} onValueChange={setArrivalDraft}>
               <SelectTrigger className="h-10 w-44 tabular-nums">
@@ -676,6 +705,11 @@ export function FirstRunPicker({
                 ))}
               </SelectContent>
             </Select>
+            <p className="text-[11px] leading-snug text-muted-foreground">
+              Tip: set this to when you&apos;ll arrive at the festival —
+              we&apos;ll start the walkthrough from sets that are still
+              playing then, and skip everything that already ended.
+            </p>
           </div>
 
           {donors.length > 0 && (
@@ -688,7 +722,7 @@ export function FirstRunPicker({
               >
                 <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   <Copy className="size-3" />
-                  Copy {dayLabel.short} from a friend
+                  Copy {dayLabel.weekday} picks from a friend
                   <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-muted-foreground">
                     {donors.length}
                   </span>
@@ -701,7 +735,12 @@ export function FirstRunPicker({
                 />
               </button>
               {donorsOpen && (
-                <ul className="mt-2 space-y-1.5">
+                <>
+                  <p className="mt-1 px-1 text-[11px] leading-snug text-muted-foreground">
+                    Copying replaces your picks for {dayLabel.full} with
+                    your friend&apos;s. We&apos;ll ask first if you have any.
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
                   {donors.map(({ member, artists }) => {
                     const isThis = copyBusyMemberId === member._id;
                     const isExpanded = expandedDonorId === member._id;
@@ -809,56 +848,45 @@ export function FirstRunPicker({
                     );
                   })}
                 </ul>
+                </>
               )}
             </div>
           )}
 
-          <div className="space-y-2 border-t border-border/40 bg-background/40 px-4 py-3">
-            <Button
-              onClick={commitArrival}
-              disabled={!arrivalDraft || isCopying}
-              className="w-full"
-              size="lg"
-            >
-              Continue <ChevronRight className="size-4" />
-            </Button>
-            <div className="flex flex-wrap items-center justify-center gap-1">
+          {dayPickCount > 0 && myMemberId && (
+            <div className="flex justify-center border-t border-border/40 bg-background/40 px-4 py-2">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={backFromArrival}
-                disabled={phase.dayIndex === 0}
+                onClick={() => void handleResetCurrentDay()}
+                disabled={offline || isResettingThisDay || isCopying}
+                className="gap-1.5 text-muted-foreground"
+                title={
+                  offline
+                    ? "Offline — reconnect to reset"
+                    : `Remove your ${dayPickCount} pick${
+                        dayPickCount === 1 ? "" : "s"
+                      } on ${dayLabel.full}`
+                }
               >
-                Back
-              </Button>
-              {dayPickCount > 0 && myMemberId && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => void handleResetCurrentDay()}
-                  disabled={offline || isResettingThisDay || isCopying}
-                  title={
-                    offline
-                      ? "Offline — reconnect to reset"
-                      : `Remove your ${dayPickCount} pick${
-                          dayPickCount === 1 ? "" : "s"
-                        } on ${dayLabel.full}`
-                  }
-                >
-                  {isResettingThisDay ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <RotateCcw className="size-3.5" />
-                  )}
-                  Reset {dayLabel.short} ({dayPickCount})
-                </Button>
-              )}
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                <X className="size-3.5" />
-                Exit
+                {isResettingThisDay ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <RotateCcw className="size-3.5" />
+                )}
+                Reset {dayLabel.short} ({dayPickCount})
               </Button>
             </div>
-          </div>
+          )}
+          <NavBar
+            position="bottom"
+            onBack={backFromArrival}
+            backDisabled={phase.dayIndex === 0}
+            onContinue={commitArrival}
+            continueLabel="Continue"
+            continueDisabled={!arrivalDraft || isCopying}
+            onExit={onClose}
+          />
         </DialogContent>
       </Dialog>
     );
@@ -928,6 +956,14 @@ export function FirstRunPicker({
           ref={dialogScrollRef}
           className="max-h-[90dvh] max-w-lg gap-0 overflow-y-auto p-0"
         >
+          <NavBar
+            position="top"
+            onBack={backFromSlot}
+            onContinue={advanceFromSlot}
+            continueLabel={isLastDayLastSlot ? "Done" : "Continue"}
+            continueDisabled={offline}
+            onExit={onClose}
+          />
           <DialogHeader className="space-y-2 border-b border-border/40 px-5 pb-3 pt-5">
             <div className="flex items-center justify-between gap-2">
               <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-[11px] font-medium text-primary">
@@ -1080,25 +1116,6 @@ export function FirstRunPicker({
                 const pickedIds = selectionsByArtist.get(a._id) ?? [];
                 const youPicked = !!myMemberId && myPickedSet.has(a._id);
                 const isBusy = busyArtistId === a._id;
-                // Match the Schedule view's attendee strip: include
-                // the session user with an "isYou" highlight so the
-                // walkthrough renders the same social info as the
-                // grid, instead of silently dropping you from the row.
-                const allAttendees = pickedIds
-                  .map((id) => {
-                    const m = membersById.get(id);
-                    if (!m) return null;
-                    return { id, member: m, isYou: id === myMemberId };
-                  })
-                  .filter(
-                    (
-                      x,
-                    ): x is {
-                      id: Id<"members">;
-                      member: Member;
-                      isYou: boolean;
-                    } => x !== null,
-                  );
                 // Joined sidequests whose interval intersects this
                 // artist's set time. Half-open intervals so a quest
                 // ending exactly when a set starts isn't flagged as
@@ -1227,23 +1244,12 @@ export function FirstRunPicker({
                         </span>
                       </div>
                     )}
-                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
-                      {allAttendees.length === 0 ? (
-                        <span className="text-[10px] text-muted-foreground/70">
-                          {myMemberId ? "Be the first" : "No picks yet"}
-                        </span>
-                      ) : (
-                        allAttendees.map(({ id, member, isYou }) => (
-                          <MemberChip
-                            key={id}
-                            name={member.name}
-                            color={member.color}
-                            size="xs"
-                            isYou={isYou}
-                            truncate
-                          />
-                        ))
-                      )}
+                    <div className="mt-1 flex min-w-0 items-center">
+                      <AttendeesStrip
+                        pickedByMemberIds={pickedIds}
+                        membersById={membersById}
+                        myMemberId={myMemberId}
+                      />
                     </div>
                   </button>
                 );
@@ -1267,26 +1273,14 @@ export function FirstRunPicker({
             </div>
           </div>
 
-          <div className="space-y-2 border-t border-border/40 bg-background/40 px-4 py-3">
-            <Button
-              onClick={advanceFromSlot}
-              disabled={offline}
-              className="w-full"
-              size="lg"
-            >
-              {isLastDayLastSlot ? "Done" : "Continue to next"}
-              {!isLastDayLastSlot && <ChevronRight className="size-4" />}
-            </Button>
-            <div className="flex flex-wrap items-center justify-center gap-1">
-              <Button variant="ghost" size="sm" onClick={backFromSlot}>
-                Back
-              </Button>
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                <X className="size-3.5" />
-                Exit
-              </Button>
-            </div>
-          </div>
+          <NavBar
+            position="bottom"
+            onBack={backFromSlot}
+            onContinue={advanceFromSlot}
+            continueLabel={isLastDayLastSlot ? "Done" : "Continue"}
+            continueDisabled={offline}
+            onExit={onClose}
+          />
         </DialogContent>
       </Dialog>
 
@@ -1303,5 +1297,76 @@ export function FirstRunPicker({
         />
       )}
     </>
+  );
+}
+
+/**
+ * Sticky navigation strip used at both the top and bottom of the
+ * Quick Pick dialog. Mirroring the same bar in both spots means the
+ * user can advance / step back / exit without ever scrolling to find
+ * the buttons — handy on the long slot phase with many artists.
+ *
+ * Layout: `Back · Exit · Continue` left-to-right. Continue is the
+ * primary action and sits on the right; Back is on the left; Exit
+ * is centered so it has equal visual weight to either side.
+ *
+ * `position` flips sticky anchoring (top-0 vs bottom-0) and the
+ * border side so the bar always reads as a frame edge.
+ */
+function NavBar({
+  position,
+  onBack,
+  backDisabled,
+  onContinue,
+  continueLabel,
+  continueDisabled,
+  onExit,
+}: {
+  position: "top" | "bottom";
+  onBack: () => void;
+  backDisabled?: boolean;
+  onContinue: () => void;
+  continueLabel: string;
+  continueDisabled?: boolean;
+  onExit: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "sticky z-20 flex items-center justify-between gap-1 bg-background/95 px-2 py-1.5 backdrop-blur supports-backdrop-filter:bg-background/80",
+        position === "top"
+          ? "top-0 border-b border-border/40"
+          : "bottom-0 border-t border-border/40",
+      )}
+    >
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onBack}
+        disabled={backDisabled}
+        className="gap-1"
+      >
+        <ChevronLeft className="size-4" />
+        Back
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onExit}
+        className="gap-1 text-muted-foreground"
+      >
+        <X className="size-3.5" />
+        Exit
+      </Button>
+      <Button
+        onClick={onContinue}
+        disabled={continueDisabled}
+        size="sm"
+        className="gap-1"
+      >
+        {continueLabel}
+        <ChevronRight className="size-4" />
+      </Button>
+    </div>
   );
 }
