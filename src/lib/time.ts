@@ -2,10 +2,13 @@ export type DayKey = "day_1" | "day_2" | "day_3";
 
 export const DAYS: ReadonlyArray<DayKey> = ["day_1", "day_2", "day_3"];
 
-export const DAY_LABELS: Record<DayKey, { full: string; short: string; date: string }> = {
-  day_1: { full: "Day 1 · Fri", short: "Fri", date: "May 15" },
-  day_2: { full: "Day 2 · Sat", short: "Sat", date: "May 16" },
-  day_3: { full: "Day 3 · Sun", short: "Sun", date: "May 17" },
+export const DAY_LABELS: Record<
+  DayKey,
+  { full: string; short: string; weekday: string; date: string }
+> = {
+  day_1: { full: "Day 1 · Fri", short: "Fri", weekday: "Friday", date: "May 15" },
+  day_2: { full: "Day 2 · Sat", short: "Sat", weekday: "Saturday", date: "May 16" },
+  day_3: { full: "Day 3 · Sun", short: "Sun", weekday: "Sunday", date: "May 17" },
 };
 
 const LAS_VEGAS_TZ = "America/Los_Angeles";

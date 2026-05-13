@@ -445,6 +445,25 @@ export function FirstRunPicker({
     }
   }
 
+  /**
+   * Jump to a specific slot in the current day. Powers the
+   * "Skip ahead" select in the slot header so the user can leap
+   * forward (e.g. skip the early evening and start from 11pm)
+   * without clicking through every slot. Bounds-checked: out-of-
+   * range indices are clamped to the closest valid slot to
+   * defend against stale options if the slot list changes
+   * underfoot (e.g. data refresh).
+   */
+  function jumpToSlot(slotIndex: number): void {
+    if (phase.kind !== "slot") return;
+    const day = DAYS[phase.dayIndex];
+    const slots = slotsByDay.get(day) ?? [];
+    if (slots.length === 0) return;
+    const clamped = Math.max(0, Math.min(slotIndex, slots.length - 1));
+    if (clamped === phase.slotIndex) return;
+    setPhase({ ...phase, slotIndex: clamped });
+  }
+
   function complete() {
     onClose();
   }
@@ -872,6 +891,25 @@ export function FirstRunPicker({
     (sq) => sq.startMs <= currentSlot.startMs && sq.endMs > currentSlot.startMs,
   );
 
+  // "Skip ahead" dropdown options — every slot for the current day
+  // labelled with its time range so the user can jump straight to a
+  // chosen time instead of stepping through every slot. The "ongoing
+  // at arrival" slot reads as "Arrival (HH:MM)" since it isn't
+  // anchored to a single set time.
+  const slotJumpOptions: Array<{ value: string; label: string }> = slots.map(
+    (s, i) => {
+      let label: string;
+      if (s.kind === "ongoing") {
+        label = `Arrival · ${formatTime(phase.arrivalMs)}`;
+      } else if (s.endStartMs > s.startMs) {
+        label = `${formatTime(s.startMs)} – ${formatTime(s.endStartMs)}`;
+      } else {
+        label = formatTime(s.startMs);
+      }
+      return { value: String(i), label };
+    },
+  );
+
   // Sidequests the user has joined on this day, used to surface an
   // amber "overlap" chip on artist cards whose set time collides
   // with one. Mirrors the artist-pick `myOverlapping` warning that
@@ -914,6 +952,36 @@ export function FirstRunPicker({
                   ? "These sets all start within ~30 minutes of each other. Pick anyone you'd catch — pick two if you want to do half-and-half."
                   : "Pick anyone you want to see at this time. You can pick more than one if you want to catch half of two sets."}
             </DialogDescription>
+            {slotJumpOptions.length > 1 && (
+              <div className="flex items-center gap-1.5">
+                <span className="flex shrink-0 items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                  <Clock className="size-3" />
+                  Skip to
+                </span>
+                <Select
+                  value={String(effectiveSlotIndex)}
+                  onValueChange={(v) => jumpToSlot(parseInt(v, 10))}
+                >
+                  <SelectTrigger
+                    className="h-7 flex-1 gap-1.5 rounded-full border-border/50 bg-background/40 px-2 text-[11px] tabular-nums"
+                    aria-label="Jump to a different time"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {slotJumpOptions.map((opt) => (
+                      <SelectItem
+                        key={opt.value}
+                        value={opt.value}
+                        className="tabular-nums"
+                      >
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
               <div
                 className="h-full rounded-full bg-primary transition-all"
@@ -1045,20 +1113,24 @@ export function FirstRunPicker({
                     type="button"
                     disabled={!myMemberId || offline || isBusy}
                     onClick={() => handleToggle(a._id)}
-                    className={cn(
-                      "flex w-full flex-col items-stretch gap-1.5 rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-                      youPicked
-                        ? "border-primary/60 bg-primary/10 ring-1 ring-primary/40"
-                        : "border-border/60 bg-card/40 hover:bg-card/60",
-                    )}
-                    style={
-                      youPicked
-                        ? undefined
-                        : {
-                            backgroundColor: `rgb(${palette.rgb} / 0.06)`,
-                            borderColor: `rgb(${palette.rgb} / 0.35)`,
-                          }
-                    }
+                    className="flex w-full flex-col items-stretch gap-1.5 rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                    // Active and inactive states both stay in the
+                    // stage's color family — picked just dials the
+                    // saturation up (deeper fill + opaque border +
+                    // inset ring) so the selection reads visually
+                    // without ever flipping to a clashing red/primary
+                    // tint that fought the stage palette.
+                    style={{
+                      backgroundColor: `rgb(${palette.rgb} / ${
+                        youPicked ? 0.28 : 0.06
+                      })`,
+                      borderColor: `rgb(${palette.rgb} / ${
+                        youPicked ? 0.85 : 0.35
+                      })`,
+                      boxShadow: youPicked
+                        ? `inset 0 0 0 1px rgb(${palette.rgb} / 0.55)`
+                        : undefined,
+                    }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
@@ -1105,10 +1177,20 @@ export function FirstRunPicker({
                       <div
                         className={cn(
                           "inline-flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium",
-                          youPicked
-                            ? "bg-primary text-primary-foreground"
-                            : "border border-dashed border-foreground/40 text-muted-foreground",
+                          !youPicked &&
+                            "border border-dashed border-foreground/40 text-muted-foreground",
                         )}
+                        // Picked pill stays in the stage color family
+                        // so it reads as part of the same active
+                        // surface rather than a foreign accent.
+                        style={
+                          youPicked
+                            ? {
+                                backgroundColor: `rgb(${palette.rgb})`,
+                                color: "rgb(15 23 42)",
+                              }
+                            : undefined
+                        }
                       >
                         {isBusy ? (
                           <Loader2 className="size-3 animate-spin" />

@@ -31,11 +31,19 @@ export interface PinColorOption {
 
 export const PIN_COLORS: ReadonlyArray<PinColorOption> = [
   { name: "Red", value: "#ef4444" },
+  { name: "Rose", value: "#f43f5e" },
   { name: "Orange", value: "#f97316" },
   { name: "Amber", value: "#facc15" },
   { name: "Lime", value: "#84cc16" },
+  { name: "Green", value: "#22c55e" },
+  { name: "Emerald", value: "#10b981" },
+  { name: "Teal", value: "#14b8a6" },
   { name: "Cyan", value: "#22d3ee" },
+  { name: "Sky", value: "#0ea5e9" },
   { name: "Blue", value: "#3b82f6" },
+  { name: "Indigo", value: "#6366f1" },
+  { name: "Violet", value: "#8b5cf6" },
+  { name: "Fuchsia", value: "#d946ef" },
   { name: "Magenta", value: "#ec4899" },
   { name: "White", value: "#ffffff" },
 ];

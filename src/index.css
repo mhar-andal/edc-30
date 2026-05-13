@@ -61,10 +61,23 @@
   * {
     border-color: var(--border);
   }
+  /* Fill the viewport — the percentage fallback covers older iOS
+     Safari while the dynamic-viewport-height units below resolve the
+     "leaves a gap at the bottom on iPhone 15 Pro Max" issue caused
+     by the dynamic toolbar / home-bar region pushing layout shorter
+     than `100vh` reports. `dvh` reflects the real visible viewport
+     including / excluding browser chrome as it animates. */
   html,
   body,
   #root {
     height: 100%;
+    min-height: 100vh; /* Fallback */
+    min-height: 100dvh;
+  }
+  html,
+  body,
+  #root {
+    height: 100dvh; /* Override `height: 100%` on supporting browsers. */
   }
   body {
     background-color: var(--background);

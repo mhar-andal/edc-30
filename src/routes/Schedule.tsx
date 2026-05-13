@@ -317,17 +317,7 @@ export default function Schedule() {
               <TabsTrigger
                 key={d}
                 value={d}
-                className={cn(
-                  "w-full",
-                  // In My Day view we paint the active day with the
-                  // primary brand color so the personal context (your
-                  // schedule for *this* day) reads at a glance and
-                  // contrasts harder with the inactive days. The
-                  // Schedule (all-stages) view keeps the neutral
-                  // default since that's a browse-everyone surface.
-                  view === "myday" &&
-                    "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20",
-                )}
+                className="w-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:shadow-primary/20"
               >
                 <span className="hidden sm:inline">{DAY_LABELS[d].full}</span>
                 <span className="sm:hidden">
@@ -367,7 +357,7 @@ export default function Schedule() {
               ) : (
                 <RotateCcw className="size-3" />
               )}
-              Reset {DAY_LABELS[day].short}
+              Reset {DAY_LABELS[day].weekday} Picks
               <span className="rounded-full bg-secondary px-1.5 text-[10px] font-semibold text-foreground">
                 {myDayPickCount}
               </span>
