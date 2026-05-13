@@ -25,6 +25,16 @@ import { cn } from "@/lib/utils";
 const SLOT_MS = 15 * 60 * 1000;
 const DEFAULT_MEET_DURATION_MS = 15 * 60 * 1000;
 /**
+ * How far back (before the convergence window starts) the gather
+ * dropdown is allowed to go, and how far past the end the leave
+ * dropdown is allowed to extend. The chip rows stay anchored to
+ * the window itself, but the dropdowns are "flex" pickers —
+ * useful when people want to gather a bit early or hang at the
+ * spot a bit longer than the destination set's nominal start.
+ */
+const GATHER_LEAD_MS = 60 * 60 * 1000;
+const LEAVE_TRAIL_MS = 60 * 60 * 1000;
+/**
  * Minute offsets surfaced as "leave time" chips (relative to the
  * gather time). Anchoring on duration rather than absolute clock time
  * makes the "how long are we hanging out at the spot" decision the
@@ -182,11 +192,20 @@ export function MeetupSpotPicker({
       setTimeOpen(false);
       return;
     }
-    const start = Math.min(Math.max(draftStartMs, windowStart), windowEnd);
+    // Allow up to GATHER_LEAD_MS before the convergence window
+    // (early gather) and up to LEAVE_TRAIL_MS after (linger at the
+    // spot). Leave time still has to be ≥ start.
+    const start = Math.min(
+      Math.max(draftStartMs, windowStart - GATHER_LEAD_MS),
+      windowEnd + LEAVE_TRAIL_MS,
+    );
     const end =
       draftEndMs === null
         ? undefined
-        : Math.min(Math.max(draftEndMs, start), windowEnd);
+        : Math.min(
+            Math.max(draftEndMs, start),
+            windowEnd + LEAVE_TRAIL_MS,
+          );
     setTimeBusy(true);
     setTimeOpen(false);
     try {
@@ -601,7 +620,7 @@ function MeetTimeDialog({
           <CustomTimeRow
             label="Custom gather"
             valueMs={draftStartMs}
-            min={windowStart}
+            min={windowStart - GATHER_LEAD_MS}
             max={windowEnd}
             onChange={(nextMs) => {
               setDraftStartMs(nextMs);
@@ -647,7 +666,11 @@ function MeetTimeDialog({
                 label="Custom leave"
                 valueMs={draftEndMs}
                 min={draftStartMs}
-                max={windowEnd}
+                // Allow lingering up to LEAVE_TRAIL_MS past the
+                // convergence window's nominal end, so groups can
+                // hang out at the spot a bit longer than the buffer
+                // suggests.
+                max={windowEnd + LEAVE_TRAIL_MS}
                 allowClear
                 onChange={setDraftEndMs}
               />

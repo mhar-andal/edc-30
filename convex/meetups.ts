@@ -8,6 +8,17 @@ const dayValidator = v.union(
   v.literal("day_3"),
 );
 
+/**
+ * How far the gather time is allowed to land before the convergence
+ * window starts, and how far the leave time is allowed to extend
+ * past the window's nominal end. Mirrors the client-side
+ * `GATHER_LEAD_MS` / `LEAVE_TRAIL_MS` in MeetupSpotPicker so the
+ * server doesn't silently clamp values the user explicitly chose
+ * for flexibility.
+ */
+const GATHER_LEAD_MS = 60 * 60 * 1000;
+const LEAVE_TRAIL_MS = 60 * 60 * 1000;
+
 export const listForDay = query({
   args: { day: dayValidator },
   handler: async (ctx, { day }) => {
@@ -176,12 +187,18 @@ export const setMeetTime = mutation({
     const clampedStart =
       meetMs === undefined
         ? undefined
-        : Math.min(Math.max(meetMs, windowStartMs), windowEndMs);
+        : Math.min(
+            Math.max(meetMs, windowStartMs - GATHER_LEAD_MS),
+            windowEndMs + LEAVE_TRAIL_MS,
+          );
     // An end without a start doesn't make sense — drop it.
     const clampedEnd =
       meetEndMs === undefined || clampedStart === undefined
         ? undefined
-        : Math.min(Math.max(meetEndMs, clampedStart), windowEndMs);
+        : Math.min(
+            Math.max(meetEndMs, clampedStart),
+            windowEndMs + LEAVE_TRAIL_MS,
+          );
 
     const existing = await ctx.db
       .query("meetups")
