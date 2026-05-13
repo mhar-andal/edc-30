@@ -710,6 +710,14 @@ function CustomTimeRow({
   // `applyTimeToAnchor` figures out which calendar day the value
   // belongs to from the lower bound of the window, which matters for
   // late-night convergences that cross midnight.
+  //
+  // We deliberately do NOT set HTML `min`/`max` attributes on the
+  // input. Late-night convergences yield ranges like 23:00 → 00:30,
+  // and HH:MM strings can't represent "wraps midnight" — iOS Safari
+  // sees `min > max` and refuses to commit any typed value, which
+  // looked like "the time picker doesn't work" on iPhones. We clamp
+  // the result in `onChange` instead, which handles cross-midnight
+  // correctly via `applyTimeToAnchor`.
   const displayValue = valueMs !== null ? msToTimeInput(valueMs) : "";
   return (
     <div className="flex items-center gap-2 pt-1">
@@ -719,8 +727,6 @@ function CustomTimeRow({
       <input
         type="time"
         value={displayValue}
-        min={msToTimeInput(min)}
-        max={msToTimeInput(max)}
         step={60}
         onChange={(e) => {
           const raw = e.target.value;
