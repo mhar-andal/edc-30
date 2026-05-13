@@ -625,7 +625,14 @@ export function FirstRunPicker({
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
         <DialogContent
           ref={dialogScrollRef}
-          className="max-h-[90dvh] max-w-md gap-0 overflow-y-auto p-0"
+          // `min-w-0 overflow-x-hidden` keeps grid items (the
+          // dialog uses a grid layout under the hood) from growing
+          // past the dialog's `max-w-md` when an inner row has
+          // intrinsically-wide content like a long marquee of
+          // attendee chips. Without this the page itself
+          // x-scrolls and the AttendeesStrip's auto-marquee can't
+          // detect overflow.
+          className="max-h-[90dvh] min-w-0 max-w-md gap-0 overflow-y-auto overflow-x-hidden p-0"
         >
           <NavBar
             position="top"
@@ -954,7 +961,11 @@ export function FirstRunPicker({
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
         <DialogContent
           ref={dialogScrollRef}
-          className="max-h-[90dvh] max-w-lg gap-0 overflow-y-auto p-0"
+          // See companion comment on the arrival-phase DialogContent
+          // above — `min-w-0 overflow-x-hidden` prevents the grid
+          // tracks from growing past `max-w-lg` when the artist
+          // cards' attendee marquees have a lot of chips.
+          className="max-h-[90dvh] min-w-0 max-w-lg gap-0 overflow-y-auto overflow-x-hidden p-0"
         >
           <NavBar
             position="top"
@@ -1028,8 +1039,11 @@ export function FirstRunPicker({
             </div>
           </DialogHeader>
 
-          <div className="px-5">
-            <div className="space-y-2 py-3">
+          {/* `min-w-0` on the grid item is what actually keeps the
+              column track from expanding past max-w-lg when the
+              artist cards have wide attendee marquees. */}
+          <div className="min-w-0 px-5">
+            <div className="min-w-0 space-y-2 py-3">
               {sidequestsAtSlot.length > 0 && (
                 <div className="space-y-2 rounded-lg border border-violet-500/30 bg-violet-500/5 p-2.5">
                   <div className="text-[10px] font-medium uppercase tracking-wide text-violet-300">
