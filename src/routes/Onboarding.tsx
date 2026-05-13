@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useMutation } from "convex/react";
 import { CloudOff, HelpCircle, Loader2, Sparkles, Users } from "lucide-react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -40,6 +41,14 @@ export default function Onboarding() {
   const [error, setError] = useState<string | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
   const [signInOpen, setSignInOpen] = useState(false);
+  // Member captured from the "Already here" chip click flow. When
+  // set, the sign-in confirmation dialog targets this member rather
+  // than `memberByName` (which only exists when the user typed in a
+  // name that matched). Lets the same dialog serve both flows.
+  const [pendingSignInMember, setPendingSignInMember] = useState<{
+    _id: Id<"members">;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     if (session.status !== "anonymous") return;
@@ -90,14 +99,25 @@ export default function Onboarding() {
     trimmedName.length <= 32 &&
     (!!memberByName || !!memberColor);
 
+  // The dialog is shown for both flows — direct chip click and typed
+  // name match. Pending click target wins when both are set so the
+  // most recent intent is honored.
+  const signInTarget = pendingSignInMember ?? memberByName ?? null;
+
   function signInAsExisting() {
-    if (!memberByName) return;
+    if (!signInTarget) return;
     writeStored({
-      memberId: memberByName._id,
-      memberName: memberByName.name,
+      memberId: signInTarget._id,
+      memberName: signInTarget.name,
     });
     setSignInOpen(false);
+    setPendingSignInMember(null);
     navigate("/schedule", { replace: true });
+  }
+
+  function startSignInFromChip(m: { _id: Id<"members">; name: string }) {
+    setPendingSignInMember({ _id: m._id, name: m.name });
+    setSignInOpen(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -171,18 +191,23 @@ export default function Onboarding() {
         {(members?.length ?? 0) > 0 && (
           <div className="rounded-xl border border-border/60 bg-card/60 p-4">
             <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <Users className="size-3.5" /> Already here ({members?.length})
+              <Users className="size-3.5" /> Already here ({members?.length}) ·
+              tap to sign in
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {(members ?? []).slice(0, 30).map((m) => (
-                <div
+                <button
                   key={m._id}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/40 px-2 py-0.5"
-                  title={m.name}
+                  type="button"
+                  onClick={() =>
+                    startSignInFromChip({ _id: m._id, name: m.name })
+                  }
+                  title={`Sign in as ${m.name}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/40 px-2 py-0.5 transition-colors hover:bg-background hover:text-foreground hover:ring-1 hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <MemberDot color={m.color} />
                   <span className="text-[11px]">{m.name}</span>
-                </div>
+                </button>
               ))}
               {(members ?? []).length > 30 && (
                 <span className="text-[11px] text-muted-foreground">
@@ -270,24 +295,29 @@ export default function Onboarding() {
       <Dialog
         open={signInOpen}
         onOpenChange={(open) => {
-          if (!submitting) setSignInOpen(open);
+          if (submitting) return;
+          setSignInOpen(open);
+          if (!open) setPendingSignInMember(null);
         }}
       >
         <DialogContent className="w-[calc(100vw-2rem)] max-w-sm gap-3 p-5 sm:p-6">
           <DialogHeader className="space-y-2">
             <DialogTitle>
-              {memberByName?.name ?? trimmedName} already exists
+              Sign in as {signInTarget?.name ?? trimmedName}?
             </DialogTitle>
             <DialogDescription>
-              Continue to sign in as &ldquo;
-              {memberByName?.name ?? trimmedName}&rdquo;?
+              You&apos;ll see &ldquo;{signInTarget?.name ?? trimmedName}&rdquo;
+              &apos;s picks, meetups, and notifications on this device.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 pt-2 sm:gap-2">
             <Button
               type="button"
               variant="ghost"
-              onClick={() => setSignInOpen(false)}
+              onClick={() => {
+                setSignInOpen(false);
+                setPendingSignInMember(null);
+              }}
             >
               Cancel
             </Button>
