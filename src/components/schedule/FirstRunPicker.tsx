@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import {
+  AlertTriangle,
   Check,
   ChevronDown,
   ChevronRight,
@@ -871,6 +872,17 @@ export function FirstRunPicker({
     (sq) => sq.startMs <= currentSlot.startMs && sq.endMs > currentSlot.startMs,
   );
 
+  // Sidequests the user has joined on this day, used to surface an
+  // amber "overlap" chip on artist cards whose set time collides
+  // with one. Mirrors the artist-pick `myOverlapping` warning that
+  // ArtistCard renders in the schedule view, so the walkthrough
+  // doesn't quietly let the user double-book themselves.
+  const myJoinedSidequestsToday: Sidequest[] = myMemberId
+    ? (sidequestsByDay.get(day) ?? []).filter((sq) =>
+        sq.participantMemberIds.includes(myMemberId),
+      )
+    : [];
+
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -1019,6 +1031,13 @@ export function FirstRunPicker({
                       isYou: boolean;
                     } => x !== null,
                   );
+                // Joined sidequests whose interval intersects this
+                // artist's set time. Half-open intervals so a quest
+                // ending exactly when a set starts isn't flagged as
+                // a conflict.
+                const overlappingSidequests = myJoinedSidequestsToday.filter(
+                  (sq) => sq.startMs < a.endMs && sq.endMs > a.startMs,
+                );
 
                 return (
                   <button
@@ -1101,6 +1120,31 @@ export function FirstRunPicker({
                         {youPicked ? "Picked" : "Pick"}
                       </div>
                     </div>
+                    {overlappingSidequests.length > 0 && (
+                      <div
+                        className="mt-1 flex flex-col gap-0.5 rounded-md bg-amber-500/15 px-1.5 py-1 text-[10px] font-medium text-amber-200 ring-1 ring-amber-500/40"
+                        title="You've joined a sidequest at this time"
+                      >
+                        <span className="flex items-center gap-1 text-[9px] uppercase tracking-wide opacity-80">
+                          <AlertTriangle className="size-2.5 shrink-0" />
+                          Sidequest at this time
+                        </span>
+                        <span className="flex w-full min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5">
+                          <span className="truncate font-semibold text-violet-200">
+                            {overlappingSidequests[0].title}
+                          </span>
+                          <span className="shrink-0 whitespace-nowrap tabular-nums opacity-80">
+                            {formatTime(overlappingSidequests[0].startMs)}–
+                            {formatTime(overlappingSidequests[0].endMs)}
+                          </span>
+                          {overlappingSidequests.length > 1 && (
+                            <span className="shrink-0 rounded-full bg-amber-500/30 px-1 text-[9px] font-semibold text-amber-100 ring-1 ring-amber-500/50">
+                              +{overlappingSidequests.length - 1}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
                     <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
                       {allAttendees.length === 0 ? (
                         <span className="text-[10px] text-muted-foreground/70">
