@@ -70,7 +70,7 @@ const STEPS: Step[] = [
   },
   {
     title: "Your day on a single timeline",
-    body: "My Day is the default view — your picks, joined meetups, and sidequests laid out chronologically. Tap any item for details, or compare your day side-by-side with a friend's.",
+    body: "Schedule is the default view — your picks, joined meetups, and sidequests laid out chronologically. Tap any item for details, or compare your day side-by-side with a friend's.",
     visual: <MyDayVisual />,
   },
   {
@@ -280,7 +280,7 @@ function MyDayVisual() {
       <div className="mb-0.5 flex items-center gap-1.5">
         <span className="inline-flex w-fit items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
           <CalendarClock className="size-2.5" />
-          My Day · Friday
+          Schedule · Friday
         </span>
         <span className="inline-flex w-fit items-center gap-1 rounded-full bg-card/80 px-2 py-0.5 text-[9px] font-medium text-muted-foreground ring-1 ring-border/60">
           <GitCompare className="size-2.5" />

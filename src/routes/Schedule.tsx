@@ -381,7 +381,7 @@ export default function Schedule() {
             <MapIcon className="size-3" />
             View map
           </button>
-          {myMemberId && myDayPickCount > 0 && (
+          {myMemberId && myDayPickCount > 0 && view === "schedule" && (
             <button
               type="button"
               onClick={() => void handleResetDayPicks()}
@@ -690,13 +690,13 @@ function ViewSwitcher({
   }> = [
     {
       value: "myday",
-      label: "My Day",
+      label: "Schedule",
       icon: CalendarClock,
       hint: "Your picks, meetups & sidequests",
     },
     {
       value: "schedule",
-      label: "Schedule",
+      label: "Plan",
       icon: LayoutGrid,
       hint: "All stages & sidequests",
     },
