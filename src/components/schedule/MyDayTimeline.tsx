@@ -550,15 +550,33 @@ export function MyDayTimeline({
               const height = bottom - top;
               const widthPct = 100 / totalLanes;
               const leftPct = widthPct * lane;
+              // In compare mode, when two slots overlap (totalLanes
+              // > 1) we gently pulse them out of phase so the eye
+              // can read what's beneath / next to a card without
+              // having to mentally untangle stacked side-by-sides.
+              // Phase shift = lane × cycle/totalLanes so each card
+              // hits its dim peak when its neighbour is bright.
+              const isInConflict = isComparing && totalLanes > 1;
+              const conflictDelaySec =
+                isInConflict && totalLanes > 0
+                  ? -(lane * 3) / totalLanes
+                  : undefined;
               return (
                 <div
                   key={event.id}
-                  className="absolute px-1"
+                  className={cn(
+                    "absolute px-1",
+                    isInConflict && "animate-timeline-overlap-pulse",
+                  )}
                   style={{
                     top,
                     height,
                     left: `${leftPct}%`,
                     width: `${widthPct}%`,
+                    animationDelay:
+                      conflictDelaySec !== undefined
+                        ? `${conflictDelaySec}s`
+                        : undefined,
                   }}
                 >
                   <TimelineCard
@@ -797,10 +815,45 @@ function TimelineCard({
 }
 
 /**
- * Small badge stack rendered in the top-right corner of compare-mode
- * cards. Shows a member-color dot per owner, falling back to a
- * "Both" label when both members own the event so the shared status
- * is visually obvious without relying on color matching alone.
+ * In compare mode, return inline-style overrides that tint a card
+ * with the owning member's color so it's instantly clear whose slot
+ * a card belongs to. When both members own the same event we use a
+ * 50/50 diagonal split between their two colors.
+ *
+ * Hex with `33` alpha (~0.2 opacity) keeps the tint subtle enough
+ * for the foreground text to stay legible against a dark surface.
+ */
+function memberColorTint(
+  ownerIds: Array<Id<"members">>,
+  compareContext: CompareContext | null,
+): { backgroundColor?: string; backgroundImage?: string } | null {
+  if (!compareContext) return null;
+  const ownsPrimary = ownerIds.includes(compareContext.primary._id);
+  const ownsCompare = ownerIds.includes(compareContext.compare._id);
+  if (!ownsPrimary && !ownsCompare) return null;
+  if (ownsPrimary && ownsCompare) {
+    const a = compareContext.primary.color;
+    const b = compareContext.compare.color;
+    return {
+      backgroundColor: "transparent",
+      backgroundImage: `linear-gradient(135deg, ${a}33 0%, ${a}33 50%, ${b}33 50%, ${b}33 100%)`,
+    };
+  }
+  const owner = ownsPrimary ? compareContext.primary : compareContext.compare;
+  return { backgroundColor: `${owner.color}33` };
+}
+
+/**
+ * Compare-mode "whose card is this" tag. Rendered as its own row
+ * inside each timeline card so the full owner name is readable —
+ * the previous top-right "two dots" treatment was too easy to miss
+ * and didn't fit a name. Single-owner shows `[dot] Alice`; shared
+ * events show `[dot][dot] Both` (with both color dots so colors
+ * still match the cards' tint).
+ *
+ * Returns `null` when the event isn't owned by either compared
+ * member or when there's no compare context — single-viewer mode
+ * doesn't need an ownership label.
  */
 function OwnerBadges({
   ownerIds,
@@ -814,15 +867,17 @@ function OwnerBadges({
   const ownsCompare = ownerIds.includes(compareContext.compare._id);
   if (!ownsPrimary && !ownsCompare) return null;
   const both = ownsPrimary && ownsCompare;
+  const label = both
+    ? "Both"
+    : ownsPrimary
+      ? compareContext.primary.name
+      : compareContext.compare.name;
   const titleParts: string[] = [];
   if (ownsPrimary) titleParts.push(compareContext.primary.name);
   if (ownsCompare) titleParts.push(compareContext.compare.name);
   return (
     <span
-      className={cn(
-        "pointer-events-none inline-flex shrink-0 items-center gap-0.5 rounded-full bg-background/70 px-1 py-px text-[8px] font-semibold uppercase tracking-wide ring-1 ring-border/50 backdrop-blur-sm",
-        both && "text-foreground",
-      )}
+      className="pointer-events-none flex w-full min-w-0 items-center gap-1 rounded-full bg-background/70 px-1.5 py-px text-[10px] font-medium text-foreground ring-1 ring-border/50 backdrop-blur-sm"
       title={
         both ? `Shared with ${titleParts.join(" + ")}` : titleParts.join(" + ")
       }
@@ -832,19 +887,21 @@ function OwnerBadges({
           : `Only ${titleParts.join(" and ")}`
       }
     >
-      {ownsPrimary && (
-        <span
-          className="size-1.5 rounded-full ring-1 ring-background/40"
-          style={{ backgroundColor: compareContext.primary.color }}
-        />
-      )}
-      {ownsCompare && (
-        <span
-          className="size-1.5 rounded-full ring-1 ring-background/40"
-          style={{ backgroundColor: compareContext.compare.color }}
-        />
-      )}
-      {both && <span className="ml-0.5">Both</span>}
+      <span className="flex shrink-0 items-center gap-0.5">
+        {ownsPrimary && (
+          <span
+            className="size-1.5 rounded-full ring-1 ring-background/40"
+            style={{ backgroundColor: compareContext.primary.color }}
+          />
+        )}
+        {ownsCompare && (
+          <span
+            className="size-1.5 rounded-full ring-1 ring-background/40"
+            style={{ backgroundColor: compareContext.compare.color }}
+          />
+        )}
+      </span>
+      <span className="truncate leading-none">{label}</span>
     </span>
   );
 }
@@ -913,6 +970,11 @@ function ArtistTimelineCard({
     }
   }
 
+  // In compare mode the background is tinted with the owning
+  // member's color so it's obvious whose slot it is at a glance;
+  // the stage palette stays on the left border so the stage info
+  // isn't lost.
+  const tint = memberColorTint(ownerIds, compareContext);
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -920,18 +982,18 @@ function ArtistTimelineCard({
           type="button"
           className="flex h-full w-full flex-col gap-0.5 overflow-hidden rounded-md border-l-[3px] px-2 py-1.5 text-left text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           style={{
-            backgroundColor: `rgb(${palette.rgb} / 0.18)`,
+            backgroundColor:
+              tint?.backgroundColor ?? `rgb(${palette.rgb} / 0.18)`,
+            backgroundImage: tint?.backgroundImage,
             borderColor: `rgb(${palette.rgb})`,
             color: "rgb(229 231 235)",
           }}
           aria-label={`${artist.name} on ${artist.stage} — view details`}
         >
-          <div className="flex items-baseline justify-between gap-1.5">
-            <span className="truncate text-xs font-semibold leading-tight">
-              {artist.name}
-            </span>
-            <OwnerBadges ownerIds={ownerIds} compareContext={compareContext} />
-          </div>
+          <OwnerBadges ownerIds={ownerIds} compareContext={compareContext} />
+          <span className="truncate text-xs font-semibold leading-tight">
+            {artist.name}
+          </span>
           <span
             className="inline-flex w-fit items-center gap-1 truncate text-[10px] font-medium"
             style={{ color: `rgb(${palette.rgb})` }}
@@ -1088,26 +1150,35 @@ function MeetupTimelineCard({
       ? `Gather ${formatTime(meetStart)}`
       : formatRange(conv.windowStart, conv.windowEnd);
 
+  // In compare mode the green meetup tint gives way to the owning
+  // member's color so the visual signal "whose slot is this" wins
+  // over the type-color. The Users icon + "Meetup" label inside the
+  // card still indicates type, so we don't lose that info.
+  const tint = memberColorTint(ownerIds, compareContext);
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
           className={cn(
-            "group flex h-full w-full flex-col gap-0.5 overflow-hidden rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2 py-1.5 text-left text-[11px] text-emerald-50 transition-colors hover:bg-emerald-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "group flex h-full w-full flex-col gap-0.5 overflow-hidden rounded-md border border-emerald-500/40 px-2 py-1.5 text-left text-[11px] text-emerald-50 transition-colors hover:bg-emerald-500/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            !tint && "bg-emerald-500/15",
           )}
+          style={
+            tint
+              ? {
+                  backgroundColor: tint.backgroundColor,
+                  backgroundImage: tint.backgroundImage,
+                }
+              : undefined
+          }
           aria-label={`Meetup heading to ${conv.destinationArtist.name}`}
         >
-          <div className="flex items-start justify-between gap-1.5">
-            <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide text-emerald-300">
-              <Users className="size-2.5" />
-              Meetup
-            </span>
-            <OwnerBadges
-              ownerIds={ownerIds}
-              compareContext={compareContext}
-            />
-          </div>
+          <OwnerBadges ownerIds={ownerIds} compareContext={compareContext} />
+          <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide text-emerald-300">
+            <Users className="size-2.5" />
+            Meetup
+          </span>
           <span className="truncate text-xs font-semibold leading-tight">
             {spot?.label ?? "Pick a spot"}
           </span>
@@ -1258,25 +1329,32 @@ function SidequestTimelineCard({
   const visibleDots = orderedDots.slice(0, 4);
   const overflow = orderedDots.length - visibleDots.length;
 
+  // Member-color tint takes over from the violet sidequest tint in
+  // compare mode (the UserPlus icon + "Sidequest" label still
+  // indicate type). Creator's accent stays on the left border so
+  // the "who proposed it" signal is preserved.
+  const tint = memberColorTint(ownerIds, compareContext);
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="group flex h-full w-full flex-col gap-0.5 overflow-hidden rounded-md border border-violet-500/30 bg-violet-500/10 px-2 py-1.5 text-left text-[11px] text-violet-50 transition-colors hover:bg-violet-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          style={{ borderLeft: `3px solid ${accent}` }}
+          className={cn(
+            "group flex h-full w-full flex-col gap-0.5 overflow-hidden rounded-md border border-violet-500/30 px-2 py-1.5 text-left text-[11px] text-violet-50 transition-colors hover:bg-violet-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            !tint && "bg-violet-500/10",
+          )}
+          style={{
+            borderLeft: `3px solid ${accent}`,
+            backgroundColor: tint?.backgroundColor,
+            backgroundImage: tint?.backgroundImage,
+          }}
           aria-label={`Sidequest: ${sidequest.title}`}
         >
-          <div className="flex items-start justify-between gap-1.5">
-            <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide text-violet-300">
-              <UserPlus className="size-2.5" />
-              Sidequest
-            </span>
-            <OwnerBadges
-              ownerIds={ownerIds}
-              compareContext={compareContext}
-            />
-          </div>
+          <OwnerBadges ownerIds={ownerIds} compareContext={compareContext} />
+          <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wide text-violet-300">
+            <UserPlus className="size-2.5" />
+            Sidequest
+          </span>
           <span className="truncate text-xs font-semibold leading-tight">
             {sidequest.title}
           </span>

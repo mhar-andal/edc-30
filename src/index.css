@@ -128,6 +128,32 @@
   }
 }
 
+/*
+ * Compare-mode "two slots at the same time" hint. The wrapping
+ * card stays mostly opaque, with a gentle dim midway through the
+ * cycle. We phase-shift adjacent cards via animation-delay so each
+ * one hits its dim peak when its neighbour is bright — readers'
+ * eyes track the alternation, which makes "you have X but your
+ * friend has Y at the same time" much easier to clock.
+ */
+@keyframes timeline-overlap-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.animate-timeline-overlap-pulse {
+  animation: timeline-overlap-pulse 3s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-timeline-overlap-pulse {
+    animation: none;
+  }
+}
+
 /* Scrollbar polish in dark mode */
 ::-webkit-scrollbar {
   width: 10px;
