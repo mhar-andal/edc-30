@@ -371,17 +371,30 @@ export default function Schedule() {
           </TabsList>
         </Tabs>
 
-        <div className="flex flex-wrap items-center justify-end gap-1.5">
+        <button
+          type="button"
+          onClick={() => setMapDialogOpen(true)}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-emerald-500/20 ring-1 ring-emerald-400/40 transition-all hover:bg-emerald-500/90 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+          title={`See pinned spots for ${DAY_LABELS[day].full}`}
+        >
+          <MapIcon className="size-4" />
+          View map
+        </button>
+
+        {myMemberId && !offline && (
           <button
             type="button"
-            onClick={() => setMapDialogOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-[11px] font-medium text-foreground transition-colors hover:bg-card/60"
-            title={`See pinned spots for ${DAY_LABELS[day].full}`}
+            onClick={reopenWalkthrough}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/20 ring-1 ring-primary/40 transition-all hover:bg-primary/90 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            title="Open the artist quick-pick walkthrough"
           >
-            <MapIcon className="size-3" />
-            View map
+            <Sparkles className="size-4" />
+            Quick-pick walkthrough
           </button>
-          {myMemberId && myDayPickCount > 0 && view === "schedule" && (
+        )}
+
+        {myMemberId && myDayPickCount > 0 && view === "schedule" && (
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
             <button
               type="button"
               onClick={() => void handleResetDayPicks()}
@@ -405,19 +418,7 @@ export default function Schedule() {
                 {myDayPickCount}
               </span>
             </button>
-          )}
-        </div>
-
-        {myMemberId && (
-          <button
-            type="button"
-            onClick={reopenWalkthrough}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/20 ring-1 ring-primary/40 transition-all hover:bg-primary/90 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            title="Open the artist quick-pick walkthrough"
-          >
-            <Sparkles className="size-4" />
-            Quick-pick walkthrough
-          </button>
+          </div>
         )}
 
         {tourResumable && (
@@ -593,7 +594,7 @@ export default function Schedule() {
             myMemberId={myMemberId}
             onCreateSidequest={openCreateSidequest}
             onEditSidequest={openEditSidequest}
-            onOpenWalkthrough={reopenWalkthrough}
+            onOpenWalkthrough={offline ? undefined : reopenWalkthrough}
           />
         )}
       </div>
