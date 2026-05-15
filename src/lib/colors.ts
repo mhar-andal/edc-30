@@ -1,4 +1,6 @@
 export const STAGE_NAMES = [
+  // Main stages first — DesktopGrid renders columns in this
+  // order, so primary stages should lead the layout.
   "Kinetic Field",
   "Circuit Grounds",
   "Cosmic Meadow",
@@ -8,6 +10,18 @@ export const STAGE_NAMES = [
   "Stereobloom",
   "Wasteland",
   "Bionic Jungle",
+  // Secondary stages, art cars, and partner activations.
+  // These all have full lineups in festival.json — listing
+  // them here is what makes them appear in the dropdown
+  // picker, the desktop grid, and "Where to next?" suggestions.
+  "Forest House",
+  "Casa Bacardi",
+  "Insomniac Fridays",
+  "YeeDC",
+  "Takis Rave Hangar",
+  "Electrolit Hydration House",
+  "Beatbox Art Car",
+  "Picnic Playtime Art Car",
 ] as const;
 
 export type StageName = (typeof STAGE_NAMES)[number];
@@ -33,6 +47,14 @@ const STAGE_HUES: Record<string, string> = {
   Stereobloom: "fuchsia",
   Wasteland: "orange",
   "Bionic Jungle": "teal",
+  "Forest House": "green",
+  "Casa Bacardi": "blue",
+  "Insomniac Fridays": "purple",
+  YeeDC: "indigo",
+  "Takis Rave Hangar": "red",
+  "Electrolit Hydration House": "cyan",
+  "Beatbox Art Car": "pink",
+  "Picnic Playtime Art Car": "yellow",
 };
 
 const STAGE_RGB: Record<string, string> = {
@@ -45,6 +67,14 @@ const STAGE_RGB: Record<string, string> = {
   Stereobloom: "217 70 239",
   Wasteland: "249 115 22",
   "Bionic Jungle": "20 184 166",
+  "Forest House": "34 197 94",
+  "Casa Bacardi": "96 165 250",
+  "Insomniac Fridays": "168 85 247",
+  YeeDC: "129 140 248",
+  "Takis Rave Hangar": "239 68 68",
+  "Electrolit Hydration House": "34 211 238",
+  "Beatbox Art Car": "236 72 153",
+  "Picnic Playtime Art Car": "234 179 8",
 };
 
 export function getStagePalette(stage: string): StagePalette {
