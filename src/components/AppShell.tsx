@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useMutation } from "convex/react";
 import {
@@ -35,6 +35,24 @@ const TABS = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const session = useMemberSession();
+  // <main> is our scroll container (overflow-y-auto), so neither
+  // window.scrollTo nor router navigation will reset its scroll
+  // position on tab clicks. We scroll it explicitly when the user
+  // taps a nav tab so re-clicking the active tab — or jumping
+  // between tabs — always lands at the top.
+  const mainRef = useRef<HTMLElement | null>(null);
+  function scrollContentToTop() {
+    const el = mainRef.current;
+    if (!el) return;
+    // iOS Safari ignores `behavior: "smooth"` mid-momentum-scroll,
+    // so do an instant snap first then a smooth nudge — the snap
+    // wins if we're deep in the page, the smooth read covers the
+    // last few pixels for a polished feel.
+    el.scrollTo({ top: 0, behavior: "auto" });
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -56,6 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <NavLink
                 key={to}
                 to={to}
+                onClick={scrollContentToTop}
                 className={({ isActive }) =>
                   cn(
                     "inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors",
@@ -85,7 +104,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="flex-1 overflow-y-auto">
+      <main ref={mainRef} className="flex-1 overflow-y-auto">
         <div
           className="w-full px-3 pt-3 sm:px-6 sm:pb-10"
           style={{
@@ -105,6 +124,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <NavLink
               key={to}
               to={to}
+              onClick={scrollContentToTop}
               className={({ isActive }) =>
                 cn(
                   "flex flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",

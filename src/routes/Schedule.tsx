@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation } from "convex/react";
 import {
+  ArrowUp,
   CalendarClock,
+  ChevronsDownUp,
+  ChevronsUpDown,
   LayoutGrid,
   LayoutList,
   Loader2,
@@ -20,7 +23,10 @@ import { Button } from "@/components/ui/button";
 import { DesktopGrid } from "@/components/schedule/DesktopGrid";
 import { MobileStageList } from "@/components/schedule/MobileStageList";
 import { MyDayTimeline } from "@/components/schedule/MyDayTimeline";
-import { StagesOverview } from "@/components/schedule/StagesOverview";
+import {
+  StagesOverview,
+  bucketArtistsByHour,
+} from "@/components/schedule/StagesOverview";
 import { FirstRunPicker } from "@/components/schedule/FirstRunPicker";
 import { SidequestList } from "@/components/sidequests/SidequestList";
 import {
@@ -166,6 +172,26 @@ export default function Schedule() {
   const clearPicksForDay = useMutation(api.memberSelections.clearForDay);
   const offline = useIsOffline();
   const [resettingDay, setResettingDay] = useState<DayKey | null>(null);
+  // Hour anchors collapsed in the By-Time view, lifted from
+  // `StagesOverview` so the schedule toolbar can render a
+  // "Collapse all / Expand all" affordance alongside the layout
+  // switcher. Reset whenever the active day changes — yesterday's
+  // collapsed hours are stale once we're rendering a different
+  // bucket set.
+  const [collapsedHours, setCollapsedHours] = useState<Set<number>>(
+    () => new Set(),
+  );
+  useEffect(() => {
+    setCollapsedHours(new Set());
+  }, [day]);
+  function toggleHour(hourMs: number) {
+    setCollapsedHours((prev) => {
+      const next = new Set(prev);
+      if (next.has(hourMs)) next.delete(hourMs);
+      else next.add(hourMs);
+      return next;
+    });
+  }
 
   useEffect(() => {
     try {
@@ -291,6 +317,25 @@ export default function Schedule() {
     () => data.sidequestsByDay.get(day) ?? [],
     [data.sidequestsByDay, day],
   );
+
+  // Hour-anchor keys for the By-Time toolbar. Computed here (not
+  // inside StagesOverview) so the "Collapse all" button can sit
+  // beside the layout switcher and still know which hours exist
+  // in the current view.
+  const hourBucketKeys = useMemo(
+    () => bucketArtistsByHour(dayArtists).map((b) => b.hourMs),
+    [dayArtists],
+  );
+  const allHoursCollapsed =
+    hourBucketKeys.length > 0 &&
+    hourBucketKeys.every((k) => collapsedHours.has(k));
+  function toggleAllHours() {
+    if (allHoursCollapsed) {
+      setCollapsedHours(new Set());
+    } else {
+      setCollapsedHours(new Set(hourBucketKeys));
+    }
+  }
 
   function openCreateSidequest() {
     const range = FESTIVAL_DAY_RANGE_MS[day];
@@ -518,39 +563,56 @@ export default function Schedule() {
         )}
 
         {view === "schedule" && mobileTab === "artists" && !search.trim() && (
-          <div className="flex justify-end">
-          <div
-            role="tablist"
-            aria-label="Artist layout"
-            className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-card/40 p-1 text-[11px] font-medium"
-          >
-            {(
-              [
-                { value: "byTime", label: "By time", icon: LayoutList },
-                { value: "byStage", label: "By stage", icon: LayoutGrid },
-              ] as const
-            ).map(({ value, label, icon: Icon }) => {
-              const active = scheduleLayout === value;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setScheduleLayout(value)}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors",
-                    active
-                      ? "bg-secondary text-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Icon className="size-3" />
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {scheduleLayout === "byTime" && hourBucketKeys.length > 0 && (
+              <button
+                type="button"
+                onClick={toggleAllHours}
+                aria-label={
+                  allHoursCollapsed ? "Expand all hours" : "Collapse all hours"
+                }
+                className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-card/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-card/60 hover:text-foreground"
+              >
+                {allHoursCollapsed ? (
+                  <ChevronsUpDown className="size-3" />
+                ) : (
+                  <ChevronsDownUp className="size-3" />
+                )}
+                {allHoursCollapsed ? "Expand all" : "Collapse all"}
+              </button>
+            )}
+            <div
+              role="tablist"
+              aria-label="Artist layout"
+              className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-card/40 p-1 text-[11px] font-medium"
+            >
+              {(
+                [
+                  { value: "byTime", label: "By time", icon: LayoutList },
+                  { value: "byStage", label: "By stage", icon: LayoutGrid },
+                ] as const
+              ).map(({ value, label, icon: Icon }) => {
+                const active = scheduleLayout === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setScheduleLayout(value)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded px-2.5 py-1 transition-colors",
+                      active
+                        ? "bg-secondary text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="size-3" />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -564,6 +626,8 @@ export default function Schedule() {
                   membersById={data.membersById}
                   myMemberId={myMemberId}
                   myOverlapsByArtist={data.myOverlapsByArtist}
+                  collapsedHours={collapsedHours}
+                  onToggleHour={toggleHour}
                 />
               ) : (
                 <MobileStageList
@@ -609,6 +673,8 @@ export default function Schedule() {
               membersById={data.membersById}
               myMemberId={myMemberId}
               myOverlapsByArtist={data.myOverlapsByArtist}
+              collapsedHours={collapsedHours}
+              onToggleHour={toggleHour}
             />
           </div>
         ) : (
@@ -638,6 +704,8 @@ export default function Schedule() {
           <Plus className="size-5" />
         </button>
       )}
+
+      {view === "schedule" && <ScrollBackToTop />}
 
       {editState && (
         <SidequestDialog
@@ -673,6 +741,67 @@ export default function Schedule() {
         day={day}
       />
     </div>
+  );
+}
+
+/**
+ * Floating "Back to top" pill that appears after the user has
+ * scrolled the main content container past one viewport height.
+ * The Plan layout (especially `byTime` with all stages stacked)
+ * gets very long and tedious to scroll back through, so we offer
+ * an explicit shortcut. We listen on the `<main>` element because
+ * that's the actual scroll container in our shell — `window`
+ * scroll never fires.
+ */
+function ScrollBackToTop() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const main = document.querySelector("main");
+    if (!main) return;
+    const el = main as HTMLElement;
+    function update() {
+      // One viewport height feels right: low enough to surface
+      // promptly when you're hunting through stages, high enough
+      // not to feel pushy on a quick browse.
+      setShow(el.scrollTop > el.clientHeight);
+    }
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      el.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  function scrollToTop() {
+    const main = document.querySelector("main");
+    if (!main) return;
+    (main as HTMLElement).scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={scrollToTop}
+      aria-label="Scroll back to top"
+      tabIndex={show ? 0 : -1}
+      aria-hidden={!show}
+      className={cn(
+        "fixed left-1/2 z-40 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-lg shadow-primary/30 ring-1 ring-primary/40 backdrop-blur transition-all duration-200",
+        // Float above the mobile bottom nav (h-16 + safe-area).
+        // On desktop there's no bottom nav so we just sit a bit
+        // higher than the safe-area edge.
+        "bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] md:bottom-[calc(env(safe-area-inset-bottom)+1.25rem)]",
+        show
+          ? "translate-y-0 opacity-100"
+          : "pointer-events-none translate-y-2 opacity-0",
+      )}
+    >
+      <ArrowUp className="size-3.5" />
+      Back to top
+    </button>
   );
 }
 
