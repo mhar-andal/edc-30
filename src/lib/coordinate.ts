@@ -65,12 +65,25 @@ export function buildJourney(
   for (let i = 0; i < artists.length - 1; i++) {
     const a = artists[i];
     const b = artists[i + 1];
-    // Skip gap-spanning "between" buffers. If the time between two
-    // consecutive picks is larger than MAX_BUFFER_GAP_MS, we treat
-    // that as the user skipping a slot, not transitioning between
-    // back-to-back sets.
     const gap = b.startMs - a.endMs;
-    if (gap > MAX_BUFFER_GAP_MS) continue;
+    if (gap > MAX_BUFFER_GAP_MS) {
+      // A long gap between two consecutive picks isn't a real
+      // back-to-back transition (the user is eating, exploring,
+      // doing a sidequest, etc.). Treat the second pick like a
+      // fresh "arrival" by emitting a `pre` buffer for it — that
+      // way friends meeting up for that later set can still
+      // converge on the lead-in window. Without this, anyone with
+      // an earlier pick + multi-hour gap would silently disappear
+      // from the convergence sweep at the destination.
+      buffers.push({
+        start: b.startMs - BUFFER_MS,
+        end: b.startMs,
+        fromArtist: null,
+        toArtist: b,
+        kind: "pre",
+      });
+      continue;
+    }
     const start = a.endMs - BUFFER_MS;
     const end = b.startMs + BUFFER_MS;
     if (end > start) {
@@ -150,8 +163,19 @@ export function findConvergences(
     function qualifies(set: Map<Id<"members">, BufferWindow>): boolean {
       if (set.size < 2) return false;
       const origins = new Set<string>();
-      for (const buf of set.values()) {
-        origins.add(buf.fromArtist?.stage ?? OUTSIDE_ORIGIN);
+      for (const [memberId, buf] of set) {
+        // Two members watching the same prior set are already
+        // standing together — surfacing a "meetup" between them
+        // is meaningless, so we keep the "≥2 distinct origins"
+        // rule. But the original implementation collapsed every
+        // `pre` buffer (no prior pick) into a single sentinel,
+        // which silently suppressed the most common kind of
+        // meetup: friends arriving at the festival for the same
+        // first set. Each member arriving from "outside" arrives
+        // separately, so we key the outside origin per-member —
+        // any two members both starting their day with the same
+        // act now correctly count as two distinct origins.
+        origins.add(buf.fromArtist?._id ?? `${OUTSIDE_ORIGIN}:${memberId}`);
       }
       return origins.size >= 2;
     }
